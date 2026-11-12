@@ -115,18 +115,27 @@ const SEMIBOLD = 600;
 const EXTRABOLD = 800;
 
 /**
+ * Google's Newsreader 800 sets the title 4 % wider than the reference's NewsreaderRoman
+ * (566 px against 589 px for `INFORMATIVO  STJ 906`, measured on the render): this closes it.
+ */
+const TITLE_TRACKING = -0.027;
+
+/**
  * Where the capitals start under a line's top, per family, as the fraction of the size the
  * browser puts above them: half the leading's excess over ascent plus descent, then ascent less
- * the cap height. OS/2 typo metrics, as measured on CircularXX (memory `psd-cap-top-placement`);
- * Roboto's and Newsreader's are their files' typo values, to be checked against the render.
+ * the cap height, in the metrics the browser uses: OS/2 typo where the font sets USE_TYPO_METRICS
+ * (CircularXX, Newsreader), hhea where it does not (Roboto), read from the files themselves.
  */
 const METRICS = {
-  Newsreader: { ascent: 0.945, descent: 0.278, cap: 0.66 },
+  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
   Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
   CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 },
 } as const;
 
 type Family = keyof typeof METRICS;
+
+/** A shape drawn by its outline only. */
+const NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
 
 function capOffset(family: Family, size: number, lineHeight: number): number {
   const m = METRICS[family];
@@ -159,6 +168,8 @@ const INNER = {
   edge: 10,
   textX: 151,
   textW: 790,
+  /** The question wraps narrower: the reference breaks it before the right of the answer. */
+  questionW: 740,
 } as const;
 
 /** The tabs, as paths in the slide's x and in y from their top (the reference's shapes). */
@@ -186,7 +197,7 @@ const RULING = {
   kicker: 52,
   kickerSize: 36,
   /** Kicker capitals → the title's capitals. */
-  title: 52,
+  title: 50,
   titleSize: 48,
   /** Sheet top → subject band. */
   band: 178,
@@ -196,29 +207,29 @@ const RULING = {
   question: 56,
   questionLineHeight: 1.5,
   /** The question's last line → the answer block's top. */
-  answerGap: 41,
+  answerGap: 51,
   /** Answer block top → its first capitals; its last line → block bottom. */
   answerTop: 46,
-  answerBottom: 20,
+  answerBottom: 26,
   answerLineHeight: 1.5,
   answerEdge: 13,
   /** Answer block bottom → the source's capitals. */
-  source: 22,
+  source: 27,
   sourceSize: 24,
   sourceLineHeight: 1.2,
   /** The source's last line → sheet bottom. */
-  bottom: 20,
+  bottom: 24,
 } as const;
 
 /** The back cover, from the sheet's top, the reference's. */
 const BACK = {
   sheet: 812,
-  kicker: 89,
+  kicker: 91,
   band: 195,
   bandH: 130,
   bandSize: 40,
-  bandLineHeight: 1.5,
-  closing: 358,
+  bandLineHeight: 1.2,
+  closing: 362,
   closingSize: 72,
   heart: { x: 444, y: 453, d: 192 },
   icons: { x: 461, y: 684 },
@@ -348,7 +359,15 @@ function title(
 ): readonly NodeDraft[] {
   const x = align === 'left' ? INNER.textX : CARD.x;
   const width = align === 'left' ? INNER.textW : CARD.w;
-  const placed = { family: 'Newsreader', font: SERIF, x, width, align, weight: EXTRABOLD } as const;
+  const placed = {
+    family: 'Newsreader',
+    font: SERIF,
+    x,
+    width,
+    align,
+    weight: EXTRABOLD,
+    tracking: TITLE_TRACKING,
+  } as const;
   return [
     plainText('chapeu', KICKER, {
       ...placed,
@@ -485,11 +504,11 @@ function layRuling(
       x: INNER.textX,
       capTop: y,
       size: questionSize,
-      width: INNER.textW,
+      width: INNER.questionW,
       lineHeight: RULING.questionLineHeight,
     });
     children.push(node);
-    const count = measuredLines(context, node, [parts.question], questionSize, INNER.textW);
+    const count = measuredLines(context, node, [parts.question], questionSize, INNER.questionW);
     y += (count - 1) * questionSize * RULING.questionLineHeight + questionSize * 0.709;
   }
 
@@ -630,6 +649,7 @@ function icons(ink: Ink): readonly NodeDraft[] {
       },
       size: { w: 48, h: 48 },
       stroke,
+      fill: NO_FILL,
       transform: { x, y },
     }),
     vector({
@@ -637,6 +657,7 @@ function icons(ink: Ink): readonly NodeDraft[] {
       geometry: { kind: 'path', d: 'M38 3L3 16L18 22L24 38L38 3ZM18 22L38 3', fillRule: 'nonzero' },
       size: { w: 42, h: 42 },
       stroke,
+      fill: NO_FILL,
       transform: { x: x + 66, y: y + 4 },
     }),
     vector({
@@ -644,6 +665,7 @@ function icons(ink: Ink): readonly NodeDraft[] {
       geometry: { kind: 'path', d: 'M3 3H27V37L15 27L3 37Z', fillRule: 'nonzero' },
       size: { w: 30, h: 40 },
       stroke,
+      fill: NO_FILL,
       transform: { x: x + 130, y: y + 4 },
     }),
   ];
@@ -673,6 +695,8 @@ interface Box {
   readonly lineHeight?: number;
   readonly width?: number;
   readonly align?: 'left' | 'center';
+  /** Letter spacing in em. */
+  readonly tracking?: number;
 }
 
 interface Placed extends Box {
@@ -706,6 +730,7 @@ function richText(name: string, runs: readonly TextRun[], placed: Box): TextDraf
     runs: [head ?? empty, ...tail],
     ...(placed.width === undefined ? {} : { box: { w: placed.width } }),
     align: placed.align ?? 'left',
+    letterSpacing: (placed.tracking ?? 0) * placed.size,
     lineHeight,
     transform: {
       x: placed.x,

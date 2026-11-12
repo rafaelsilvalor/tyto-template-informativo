@@ -24350,11 +24350,13 @@ var REGULAR = 400;
 var MEDIUM = 500;
 var SEMIBOLD = 600;
 var EXTRABOLD = 800;
+var TITLE_TRACKING = -0.027;
 var METRICS = {
-  Newsreader: { ascent: 0.945, descent: 0.278, cap: 0.66 },
+  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
   Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
   CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 }
 };
+var NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
 function capOffset(family, size, lineHeight) {
   const m = METRICS[family];
   return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
@@ -24374,7 +24376,9 @@ var INNER = {
   bandW: 862,
   edge: 10,
   textX: 151,
-  textW: 790
+  textW: 790,
+  /** The question wraps narrower: the reference breaks it before the right of the answer. */
+  questionW: 740
 };
 var FRONT_TAB = "M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z";
 var BACK_TAB = "M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z";
@@ -24387,7 +24391,7 @@ var RULING = {
   kicker: 52,
   kickerSize: 36,
   /** Kicker capitals → the title's capitals. */
-  title: 52,
+  title: 50,
   titleSize: 48,
   /** Sheet top → subject band. */
   band: 178,
@@ -24397,27 +24401,27 @@ var RULING = {
   question: 56,
   questionLineHeight: 1.5,
   /** The question's last line → the answer block's top. */
-  answerGap: 41,
+  answerGap: 51,
   /** Answer block top → its first capitals; its last line → block bottom. */
   answerTop: 46,
-  answerBottom: 20,
+  answerBottom: 26,
   answerLineHeight: 1.5,
   answerEdge: 13,
   /** Answer block bottom → the source's capitals. */
-  source: 22,
+  source: 27,
   sourceSize: 24,
   sourceLineHeight: 1.2,
   /** The source's last line → sheet bottom. */
-  bottom: 20
+  bottom: 24
 };
 var BACK = {
   sheet: 812,
-  kicker: 89,
+  kicker: 91,
   band: 195,
   bandH: 130,
   bandSize: 40,
-  bandLineHeight: 1.5,
-  closing: 358,
+  bandLineHeight: 1.2,
+  closing: 362,
   closingSize: 72,
   heart: { x: 444, y: 453, d: 192 },
   icons: { x: 461, y: 684 }
@@ -24509,7 +24513,15 @@ function card(context, ink, top, sheet) {
 function title(ink, court2, capTop, align) {
   const x = align === "left" ? INNER.textX : CARD.x;
   const width = align === "left" ? INNER.textW : CARD.w;
-  const placed = { family: "Newsreader", font: SERIF, x, width, align, weight: EXTRABOLD };
+  const placed = {
+    family: "Newsreader",
+    font: SERIF,
+    x,
+    width,
+    align,
+    weight: EXTRABOLD,
+    tracking: TITLE_TRACKING
+  };
   return [
     plainText("chapeu", KICKER, {
       ...placed,
@@ -24604,11 +24616,11 @@ function layRuling(context, ink, parts, questionSize, answerSize) {
       x: INNER.textX,
       capTop: y,
       size: questionSize,
-      width: INNER.textW,
+      width: INNER.questionW,
       lineHeight: RULING.questionLineHeight
     });
     children.push(node2);
-    const count = measuredLines(context, node2, [parts.question], questionSize, INNER.textW);
+    const count = measuredLines(context, node2, [parts.question], questionSize, INNER.questionW);
     y += (count - 1) * questionSize * RULING.questionLineHeight + questionSize * 0.709;
   }
   y += RULING.answerGap;
@@ -24733,6 +24745,7 @@ function icons(ink) {
       },
       size: { w: 48, h: 48 },
       stroke,
+      fill: NO_FILL,
       transform: { x, y }
     }),
     vector({
@@ -24740,6 +24753,7 @@ function icons(ink) {
       geometry: { kind: "path", d: "M38 3L3 16L18 22L24 38L38 3ZM18 22L38 3", fillRule: "nonzero" },
       size: { w: 42, h: 42 },
       stroke,
+      fill: NO_FILL,
       transform: { x: x + 66, y: y + 4 }
     }),
     vector({
@@ -24747,6 +24761,7 @@ function icons(ink) {
       geometry: { kind: "path", d: "M3 3H27V37L15 27L3 37Z", fillRule: "nonzero" },
       size: { w: 30, h: 40 },
       stroke,
+      fill: NO_FILL,
       transform: { x: x + 130, y: y + 4 }
     })
   ];
@@ -24783,6 +24798,7 @@ function richText(name, runs, placed) {
     runs: [head ?? empty, ...tail],
     ...placed.width === void 0 ? {} : { box: { w: placed.width } },
     align: placed.align ?? "left",
+    letterSpacing: (placed.tracking ?? 0) * placed.size,
     lineHeight,
     transform: {
       x: placed.x,
