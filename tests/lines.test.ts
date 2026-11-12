@@ -112,4 +112,17 @@ describe('the question', () => {
     expect(node.letterSpacing).toBe(0);
     expect(orphans).toEqual([]);
   });
+
+  it('grows into the room its lines leave, up to question-ceiling, never gaining a line', async () => {
+    // At 0.5 em a character, 30 characters take 660 px at 44 px: one line, up to the ceiling.
+    const short = await question('Pode o juiz rever isso depois?');
+    // 36 characters fit 740 px at 41 px (738) and not at 42 (756): it stops at 41.
+    const longer = await question('Pode o juiz rever a decisão já dada?');
+
+    const sizeOf = (node: TextNode) => node.runs.find((run) => run.kind === 'text')?.size;
+    expect(laidLines(short.node)).toHaveLength(1);
+    expect(sizeOf(short.node)).toBe(44);
+    expect(laidLines(longer.node)).toHaveLength(1);
+    expect(sizeOf(longer.node)).toBe(41);
+  });
 });

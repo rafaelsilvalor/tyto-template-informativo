@@ -127,6 +127,8 @@ export const NUMBER_DEFAULTS = {
   /** The question's size and its floor when the card is full. */
   'question-size': 40,
   'question-floor': 28,
+  /** The most the question may grow into the room its lines leave, never gaining a line. */
+  'question-ceiling': 44,
   /** The answer's size and its floor. */
   'answer-size': 32,
   'answer-floor': 22,
@@ -637,11 +639,39 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
       ),
     ),
   );
-  let sizes = { question: questionSize, answer: answerSize };
+  // The question grows into the room its own lines leave on the right: the largest size up to
+  // `question-ceiling`, a pixel at a time, at which it takes no more lines than at its size.
+  // Measured only; with nothing to measure it keeps its size.
+  const linesAt = (size: number): number | undefined => {
+    const node = layRuling(
+      context,
+      ink,
+      parts,
+      { question: size, answer: answerSize },
+      new Map(),
+    ).texts?.get('pergunta');
+    return node === undefined ? undefined : context.measure(node)?.lines;
+  };
+  const baseLines = linesAt(questionSize);
+  let grown = questionSize;
+  if (baseLines !== undefined) {
+    const ceiling = Math.max(questionSize, number('question-ceiling'));
+    for (let size = Math.floor(ceiling); size > questionSize; size -= 1) {
+      if ((linesAt(size) ?? Infinity) <= baseLines) {
+        grown = size;
+        break;
+      }
+    }
+  }
+
+  let sizes = { question: grown, answer: answerSize };
   let laid = layRuling(context, ink, parts, sizes, new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep; step += 1) {
-    const question = Math.max(number('question-floor'), questionSize - step);
-    const answer = Math.max(number('answer-floor'), answerSize * (question / questionSize));
+  for (let step = 1; laid.height > limit && step <= floorStep + grown - questionSize; step += 1) {
+    const question = Math.max(number('question-floor'), grown - step);
+    const answer = Math.max(
+      number('answer-floor'),
+      answerSize * Math.min(1, question / questionSize),
+    );
     sizes = { question, answer };
     laid = layRuling(context, ink, parts, sizes, new Map());
   }

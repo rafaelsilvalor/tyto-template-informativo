@@ -71,7 +71,9 @@ after it, so no line ends on `a`, `e`, `o`, `é`, `à` or `de` (the banner keeps
 same way). The question, the answer and the source go through the kit's `settle` (Tyto ADR
 0167), as `voce-conhece`'s paragraphs do: none ends on a word of its own, cleared by a word
 moved down or by letter spacing within `orphan-tracking`, never by a smaller size; a word
-nothing clears is reported as `W_TEMPLATE_ORPHAN`.
+nothing clears is reported as `W_TEMPLATE_ORPHAN`. The question also grows, subtly, into the room
+its own lines leave on the right: up to `question-ceiling` (44 px against its 40), and only
+while it takes no more lines and the card still fits.
 
 **The card** is as tall as what it holds, tabs included, and centred on the slide. It never grows
 past `card-max-height` (1080 px, 135 px from each edge); past that the question and the answer
@@ -105,8 +107,8 @@ on the machine crosses only under its permission. Without it the render warns
 
 `templates/informativo/manifest.yaml` declares its `values` (Tyto ADR 0153): the `background`
 and the `paper-texture` pictures, the card's, tabs', bands', title's, ink's and highlight's
-colours, the card's maximum height, the question's and answer's sizes and floors, and
-`orphan-tracking`. Changing
+colours, the card's maximum height, the question's and answer's sizes and floors, the
+question's `question-ceiling`, and `orphan-tracking`. Changing
 one never changes which pieces appear or their order (Tyto ADR 0151). The real background is a
 configuration's `background: { value: <path> }`.
 

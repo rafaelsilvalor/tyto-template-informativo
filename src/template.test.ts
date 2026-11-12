@@ -154,10 +154,12 @@ describe('a ruling slide', () => {
   it('keeps the same gap under the question whatever its length', () => {
     // A question of one line and one of three, measured: the answer block stands the same
     // distance under the question's last line.
-    // The runs come back as they went in, as a measure that broke nothing would hand them.
+    // The runs come back as they went in, as a measure that broke nothing would hand them. Any
+    // size over 40 takes one more line, so the question stays at 40 and the gap is all that moves.
     const measure = (lines: number) => (node: unknown) => {
-      const { name, runs } = node as { name?: string; runs: unknown };
-      return { lines: name === 'pergunta' ? lines : 1, runs };
+      const { name, runs } = node as { name?: string; runs: readonly { size?: number }[] };
+      const grown = (runs[0]?.size ?? 40) > 40 ? 1 : 0;
+      return { lines: name === 'pergunta' ? lines + grown : 1, runs };
     };
     const gapUnder = (lines: number) => {
       const context = contextOf(ruling, { measure: measure(lines) });

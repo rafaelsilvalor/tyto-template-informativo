@@ -66,6 +66,9 @@ values:
   # Past that height the question and the answer shrink together, down to these floors.
   question-size: { type: length, default: 40, min: 28, max: 56 }
   question-floor: { type: length, default: 28, min: 20, max: 40 }
+  # The question grows up to this size into the room its own lines leave on the right, as long
+  # as it takes no more lines than at `question-size`.
+  question-ceiling: { type: length, default: 44, min: 40, max: 64 }
   answer-size: { type: length, default: 32, min: 22, max: 44 }
   answer-floor: { type: length, default: 22, min: 16, max: 32 }
   # The most letter spacing, in em, the question, the answer or the source may take or give so

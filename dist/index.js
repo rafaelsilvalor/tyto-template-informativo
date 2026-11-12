@@ -24534,6 +24534,8 @@ var NUMBER_DEFAULTS = {
   /** The question's size and its floor when the card is full. */
   "question-size": 40,
   "question-floor": 28,
+  /** The most the question may grow into the room its lines leave, never gaining a line. */
+  "question-ceiling": 44,
   /** The answer's size and its floor. */
   "answer-size": 32,
   "answer-floor": 22,
@@ -24836,11 +24838,35 @@ function ruling(context, ink, number4) {
       )
     )
   );
-  let sizes = { question: questionSize, answer: answerSize };
+  const linesAt = (size) => {
+    const node2 = layRuling(
+      context,
+      ink,
+      parts,
+      { question: size, answer: answerSize },
+      /* @__PURE__ */ new Map()
+    ).texts?.get("pergunta");
+    return node2 === void 0 ? void 0 : context.measure(node2)?.lines;
+  };
+  const baseLines = linesAt(questionSize);
+  let grown = questionSize;
+  if (baseLines !== void 0) {
+    const ceiling = Math.max(questionSize, number4("question-ceiling"));
+    for (let size = Math.floor(ceiling); size > questionSize; size -= 1) {
+      if ((linesAt(size) ?? Infinity) <= baseLines) {
+        grown = size;
+        break;
+      }
+    }
+  }
+  let sizes = { question: grown, answer: answerSize };
   let laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep; step += 1) {
-    const question = Math.max(number4("question-floor"), questionSize - step);
-    const answer = Math.max(number4("answer-floor"), answerSize * (question / questionSize));
+  for (let step = 1; laid.height > limit && step <= floorStep + grown - questionSize; step += 1) {
+    const question = Math.max(number4("question-floor"), grown - step);
+    const answer = Math.max(
+      number4("answer-floor"),
+      answerSize * Math.min(1, question / questionSize)
+    );
     sizes = { question, answer };
     laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
   }
