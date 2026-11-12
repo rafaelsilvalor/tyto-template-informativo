@@ -3,13 +3,21 @@
  *
  * ## The two kinds of slide
  *
- * | slide      | the brief writes          | drawn                                                   |
- * | ---------- | ------------------------- | ------------------------------------------------------- |
- * | ruling     | `::lamina` with its lines | the subject band, the question, the answer, the source  |
- * | back cover | `::lamina {contracapa}`   | the call to like the post, "Bons estudos!", the icons   |
+ * | slide      | the brief writes                          | drawn                                   |
+ * | ---------- | ----------------------------------------- | --------------------------------------- |
+ * | ruling     | `::lamina`, then `::tema`, `::pergunta`…  | the sections written, stacked           |
+ * | back cover | `::lamina {contracapa}`, then `::chamada` | the call, the closing line, the icons   |
  *
  * One `::lamina` is one slide in Tyto, and a template cannot add slides of its own, so the brief
- * marks the back cover.
+ * marks the back cover. Every section is a field of its own and optional.
+ *
+ * ## The lines
+ *
+ * The house's own tools, not new ones: every field goes through the kit's `keepTogether`, with
+ * one rule added for a short word and the next (no line ends on `a`, `e`, `o`, `é`, `à` or
+ * `de`, as the banner keeps `de` and `e`), and the question, the answer and the source go
+ * through `settle` (Tyto ADR 0167) as `voce-conhece`'s paragraphs do, so none ends on a word of
+ * its own.
  *
  * ## The card
  *
@@ -24,7 +32,8 @@
  * Under the card lies the background, `background` (a declared image value, Tyto ADR 0153) unless
  * the brief writes `fundo`. Over everything lies the paper, `paper-texture`, in `multiply`, so the
  * grain darkens the card, the bands and the words alike. The repository ships a generated
- * background and a generated paper: the reference's are stock pictures and stay out of it.
+ * background and a generated paper; the reference's background stays out of it by the
+ * maintainer's choice and arrives by configuration or by the brief.
  *
  * Every position is the reference art's (the maintainer's PSD), in the slide's pixels.
  */
@@ -45,7 +54,19 @@ import {
   vector,
 } from '@tyto/core/template';
 import { drawLogo, oneInk, signatureOf } from '@tyto/house-style';
-import { at, lines, plain, reportOverflow } from '@tyto/template-kit';
+import {
+  KEEP_TOGETHER_RULES,
+  ORPHAN_LIMITS,
+  at,
+  keepTogether,
+  lines,
+  plain,
+  reportOrphan,
+  reportOverflow,
+  settle,
+} from '@tyto/template-kit';
+
+import type { KeepTogetherRule } from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -54,6 +75,19 @@ import type { NodeDraft, TextDraft } from '@tyto/core/template';
 
 /** The title when the brief writes no `::titulo`: the kicker, then the title (the reference's). */
 export const DEFAULT_TITLE = ['Destaques do', 'Informativo'] as const;
+
+/**
+ * The kit's pairs and one of this template's: a one-letter word or `de` stays with the word
+ * after it, so no line ends on it (Rafael, 2026-11-12, on "…de votos, se a / questão").
+ */
+export const KEEP_TOGETHER: readonly KeepTogetherRule[] = [
+  ...KEEP_TOGETHER_RULES,
+  {
+    name: 'short word + next word',
+    before: String.raw`(?<![\p{L}\p{N}])(?:[aàoeéAÀOEÉ]|[dD]e)`,
+    after: String.raw`\S`,
+  },
+];
 
 /** The back cover's band and closing line when its `::chamada` and `::fecho` are not written. */
 export const DEFAULT_CALL =
@@ -96,6 +130,11 @@ export const NUMBER_DEFAULTS = {
   /** The answer's size and its floor. */
   'answer-size': 32,
   'answer-floor': 22,
+  /**
+   * The most letter spacing, in em, the question, the answer or the source may take or give so
+   * that none ends on a word of its own (Tyto ADR 0167); their size never moves for it.
+   */
+  'orphan-tracking': ORPHAN_LIMITS.tracking,
 } as const;
 
 type NumberName = keyof typeof NUMBER_DEFAULTS;
@@ -311,7 +350,18 @@ interface Sheet {
   readonly arrow: string;
   /** Everything on the sheet, in y from the sheet's top. */
   readonly children: readonly NodeDraft[];
+  /** The texts `settle` reads for an orphan, by field name. */
+  readonly texts?: ReadonlyMap<string, TextDraft>;
 }
+
+/** How a text is set once `settle` has looked at it: its letter spacing, and its runs rebroken. */
+interface Tuning {
+  /** In px, as `settle` hands it. */
+  readonly letterSpacing: number;
+  readonly runs?: readonly TextRun[];
+}
+
+type Tunings = ReadonlyMap<string, Tuning>;
 
 type Ink = (name: ColorName) => string;
 
@@ -378,6 +428,8 @@ interface Section {
   readonly gap: number;
   readonly height: number;
   readonly draw: (top: number) => readonly NodeDraft[];
+  /** The section's text, for `settle` to read its lines: where it stands does not matter. */
+  readonly text?: TextDraft;
 }
 
 /** The sections one under another, from `top`, and the y of the last one's bottom. */
@@ -413,12 +465,16 @@ function textSection(
   written: readonly RichText[],
   style: TextStyle,
   gap: number,
+  tuning?: Tuning,
 ): Section {
-  const place = (capTop: number): TextDraft => richText(name, runs, { ...style, capTop });
+  const drawnRuns = tuning?.runs ?? runs;
+  const spacing = tuning === undefined ? {} : { spacing: tuning.letterSpacing };
+  const place = (capTop: number): TextDraft =>
+    richText(name, drawnRuns, { ...style, ...spacing, capTop });
   const count = measuredLines(context, place(0), written, style.size, style.width);
   const height =
     (count - 1) * style.size * style.lineHeight + style.size * METRICS[style.family].cap;
-  return { gap, height, draw: (top) => [place(top)] };
+  return { gap, height, draw: (top) => [place(top)], text: place(0) };
 }
 
 /** A text inside a band: the band's padding around the text section's own height. */
@@ -581,13 +637,46 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
       ),
     ),
   );
-  let laid = layRuling(context, ink, parts, questionSize, answerSize);
+  let sizes = { question: questionSize, answer: answerSize };
+  let laid = layRuling(context, ink, parts, sizes, new Map());
   for (let step = 1; laid.height > limit && step <= floorStep; step += 1) {
     const question = Math.max(number('question-floor'), questionSize - step);
     const answer = Math.max(number('answer-floor'), answerSize * (question / questionSize));
-    laid = layRuling(context, ink, parts, question, answer);
+    sizes = { question, answer };
+    laid = layRuling(context, ink, parts, sizes, new Map());
   }
-  return laid;
+
+  // No text ends on a word of its own (Tyto ADR 0167), as voce-conhece's paragraphs: each by a
+  // word moved down or its letter spacing, at the size it was fitted at, as long as the card
+  // still fits; a word nothing within the limits clears is reported.
+  const fitsAtSize = laid.height <= limit;
+  const tracking = number('orphan-tracking');
+  let tunings: Tunings = new Map();
+  for (const [name, size] of [
+    ['pergunta', sizes.question],
+    ['resposta', sizes.answer],
+    ['fonte', RULING.sourceSize],
+  ] as const) {
+    if (laid.texts?.get(name) === undefined) continue;
+    const settled = settle({
+      size,
+      measure: context.measure,
+      limits: { shrink: 0, tracking },
+      layout: (setting) => {
+        const tried = new Map(tunings);
+        tried.set(name, {
+          letterSpacing: setting.letterSpacing,
+          ...(setting.runs === undefined ? {} : { runs: setting.runs }),
+        });
+        const sheet = layRuling(context, ink, parts, sizes, tried);
+        const text = sheet.texts?.get(name) ?? laid.texts!.get(name)!;
+        return { text, fits: !fitsAtSize || sheet.height <= limit, laid: tried as Tunings };
+      },
+    });
+    tunings = settled.laid;
+    reportOrphan(context.report, settled.orphan);
+  }
+  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
 }
 
 function present(written: readonly RichText[] | undefined): written is readonly RichText[] {
@@ -598,9 +687,12 @@ function layRuling(
   context: TemplateContext,
   ink: Ink,
   parts: Ruling,
-  questionSize: number,
-  answerSize: number,
+  sizes: { readonly question: number; readonly answer: number },
+  tunings: Tunings,
 ): Sheet {
+  const questionSize = sizes.question;
+  const answerSize = sizes.answer;
+  const texts = new Map<string, TextDraft>();
   const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
 
   if (present(parts.subject)) {
@@ -633,22 +725,23 @@ function layRuling(
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink('ink') },
       { bold: MEDIUM },
     ).map((item) => italic(item, ink('highlight-color')));
-    sections.push(
-      textSection(
-        context,
-        'pergunta',
-        runs,
-        parts.question,
-        {
-          family: 'CircularXX',
-          size: questionSize,
-          lineHeight: RULING.questionLineHeight,
-          x: INNER.textX,
-          width: INNER.questionW,
-        },
-        RULING.question,
-      ),
+    const section = textSection(
+      context,
+      'pergunta',
+      runs,
+      parts.question,
+      {
+        family: 'CircularXX',
+        size: questionSize,
+        lineHeight: RULING.questionLineHeight,
+        x: INNER.textX,
+        width: INNER.questionW,
+      },
+      RULING.question,
+      tunings.get('pergunta'),
     );
+    if (section.text !== undefined) texts.set('pergunta', section.text);
+    sections.push(section);
   }
 
   if (present(parts.answer)) {
@@ -670,7 +763,9 @@ function layRuling(
         width: INNER.textW,
       },
       0,
+      tunings.get('resposta'),
     );
+    if (inner.text !== undefined) texts.set('resposta', inner.text);
     sections.push(
       bandSection(ink, 'bloco-resposta', inner, RULING.answerPadding, 'top', RULING.answer),
     );
@@ -683,26 +778,27 @@ function layRuling(
       weight: LIGHT,
       color: ink('ink'),
     });
-    sections.push(
-      textSection(
-        context,
-        'fonte',
-        runs,
-        parts.source,
-        {
-          family: 'Roboto',
-          size: RULING.sourceSize,
-          lineHeight: RULING.sourceLineHeight,
-          x: INNER.textX,
-          width: INNER.textW,
-        },
-        RULING.source,
-      ),
+    const section = textSection(
+      context,
+      'fonte',
+      runs,
+      parts.source,
+      {
+        family: 'Roboto',
+        size: RULING.sourceSize,
+        lineHeight: RULING.sourceLineHeight,
+        x: INNER.textX,
+        width: INNER.textW,
+      },
+      RULING.source,
+      tunings.get('fonte'),
     );
+    if (section.text !== undefined) texts.set('fonte', section.text);
+    sections.push(section);
   }
 
   const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes };
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
 }
 
 /** The question is italic throughout; its highlights take the highlight colour. */
@@ -850,7 +946,9 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
 function fieldOf(context: TemplateContext, name: string): RichText[] | undefined {
   const value = context.slots[name]?.value;
   if (value?.kind !== 'rich-text') return undefined;
-  return lines(value.text).filter((line) => plain(line).trim() !== '');
+  return lines(value.text)
+    .filter((line) => plain(line).trim() !== '')
+    .map((line) => keepTogether(line, KEEP_TOGETHER));
 }
 
 /** Plain words as one line of rich text. */
@@ -869,6 +967,8 @@ interface Box {
   readonly align?: 'left' | 'center';
   /** Letter spacing in em. */
   readonly tracking?: number;
+  /** Letter spacing in px, as `settle` hands it; wins over `tracking`. */
+  readonly spacing?: number;
 }
 
 interface Placed extends Box {
@@ -902,7 +1002,7 @@ function richText(name: string, runs: readonly TextRun[], placed: Box): TextDraf
     runs: [head ?? empty, ...tail],
     ...(placed.width === undefined ? {} : { box: { w: placed.width } }),
     align: placed.align ?? 'left',
-    letterSpacing: (placed.tracking ?? 0) * placed.size,
+    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
     lineHeight,
     transform: {
       x: placed.x,

@@ -65,6 +65,14 @@ and the sections under it close up, each keeping the gap the reference sets abov
 - `fundo: ./arte.png` in the frontmatter draws that picture under the card instead of the
   configured background.
 
+**The lines** break with the house's tools, not new ones. Every field goes through the kit's
+`keepTogether` with one rule of this template's: a one-letter word or `de` stays with the word
+after it, so no line ends on `a`, `e`, `o`, `é`, `à` or `de` (the banner keeps `de` and `e` the
+same way). The question, the answer and the source go through the kit's `settle` (Tyto ADR
+0167), as `voce-conhece`'s paragraphs do: none ends on a word of its own, cleared by a word
+moved down or by letter spacing within `orphan-tracking`, never by a smaller size; a word
+nothing clears is reported as `W_TEMPLATE_ORPHAN`.
+
 **The card** is as tall as what it holds, tabs included, and centred on the slide. It never grows
 past `card-max-height` (1080 px, 135 px from each edge); past that the question and the answer
 shrink together down to `question-floor` and `answer-floor`, and below those the overflow is
@@ -97,7 +105,8 @@ on the machine crosses only under its permission. Without it the render warns
 
 `templates/informativo/manifest.yaml` declares its `values` (Tyto ADR 0153): the `background`
 and the `paper-texture` pictures, the card's, tabs', bands', title's, ink's and highlight's
-colours, the card's maximum height, and the question's and answer's sizes and floors. Changing
+colours, the card's maximum height, the question's and answer's sizes and floors, and
+`orphan-tracking`. Changing
 one never changes which pieces appear or their order (Tyto ADR 0151). The real background is a
 configuration's `background: { value: <path> }`.
 
@@ -130,6 +139,9 @@ The tests, all without Tyto:
   `@tyto/template-kit/testing` (Tyto ADR 0152), against the HTML in `tests/__snapshots__/`.
 - `tests/values.test.ts`: each declared default pinned to the one the code falls back to, and a
   colour set in a test found in the HTML.
+- `tests/lines.test.ts`: where the question breaks, against a face whose every character is
+  half an em wide (CI has no CircularXX): no line ends on a short word, and the last line holds
+  two words or more. Each test fails when its rule is taken out.
 - `tests/faces.test.ts`: the faces the manifest declares are the faces the example sets, style
   included. A face left out is measured as nothing in the plugin's process, and the card is
   laid out from an estimate: the question's upright faces opened a 104 px gap under a

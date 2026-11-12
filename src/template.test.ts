@@ -1,4 +1,5 @@
 import { noBrandKit } from '@tyto/core';
+import { NO_BREAK_SPACE } from '@tyto/template-kit';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -91,8 +92,12 @@ const named = (context: TemplateContext, name: string): Node | undefined =>
 const names = (context: TemplateContext): string[] =>
   flat(frameOf(context).children).flatMap((node) => (node.name === undefined ? [] : [node.name]));
 
+/** The words a text draws; a space glued by `keepTogether` (U+00A0) reads as a space. */
 const textOf = (node: Node | undefined): string =>
-  (node?.runs ?? []).map((item) => item.text ?? '\n').join('');
+  (node?.runs ?? [])
+    .map((item) => item.text ?? '\n')
+    .join('')
+    .replaceAll(NO_BREAK_SPACE, ' ');
 
 const topOf = (context: TemplateContext, name: string): number =>
   named(context, name)?.transform?.y ?? Number.NaN;
@@ -149,8 +154,11 @@ describe('a ruling slide', () => {
   it('keeps the same gap under the question whatever its length', () => {
     // A question of one line and one of three, measured: the answer block stands the same
     // distance under the question's last line.
-    const measure = (lines: number) => (node: unknown) =>
-      (node as { name?: string }).name === 'pergunta' ? { lines } : { lines: 1 };
+    // The runs come back as they went in, as a measure that broke nothing would hand them.
+    const measure = (lines: number) => (node: unknown) => {
+      const { name, runs } = node as { name?: string; runs: unknown };
+      return { lines: name === 'pergunta' ? lines : 1, runs };
+    };
     const gapUnder = (lines: number) => {
       const context = contextOf(ruling, { measure: measure(lines) });
       return topOf(context, 'bloco-resposta') - topOf(context, 'pergunta') - (lines - 1) * 60;

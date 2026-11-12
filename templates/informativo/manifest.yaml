@@ -1,5 +1,5 @@
 name: informativo
-version: 0.2.0
+version: 0.3.0
 # The ocre brand of the private brand kit (Tyto ADR 0063): its logo and signature. Without
 # that brand in the installed kit, the logo and the signature are placeholders.
 brand: ocre
@@ -68,3 +68,6 @@ values:
   question-floor: { type: length, default: 28, min: 20, max: 40 }
   answer-size: { type: length, default: 32, min: 22, max: 44 }
   answer-floor: { type: length, default: 22, min: 16, max: 32 }
+  # The most letter spacing, in em, the question, the answer or the source may take or give so
+  # that none ends on a word of its own (Tyto ADR 0167); their size never moves for it.
+  orphan-tracking: { type: number, default: 0.01, min: 0, max: 0.05 }

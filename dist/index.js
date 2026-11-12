@@ -23894,6 +23894,10 @@ function diagnostic2(code, params, options = {}) {
     ...options.hint !== void 0 ? { hint: options.hint } : {}
   };
 }
+function isStandaloneOperator2(word) {
+  return OPERATOR_WORD.test(word);
+}
+var OPERATOR_WORD = /^[\p{Sm}\u00b7\u2013-]+$/u;
 var unitInterval2 = external_exports.number().min(0).max(1);
 var finite2 = external_exports.number().finite();
 var nonNegative2 = external_exports.number().finite().nonnegative();
@@ -24023,6 +24027,7 @@ var TemplateError2 = class extends Error {
     this.diagnostic = built;
   }
 };
+var ORPHAN_WORD_LIMIT2 = 80;
 function isTonedMark2(mark2) {
   return "layers" in mark2;
 }
@@ -24117,6 +24122,7 @@ function block(width, height, draft) {
 function at(x, y, item) {
   return shifted(item.draft, x, y);
 }
+var NO_BREAK_SPACE = "\xA0";
 var NUMBER = String.raw`\d[\d.,]*`;
 var UNITS = [
   "s",
@@ -24169,6 +24175,46 @@ var KEEP_TOGETHER_RULES = [
     after: String.raw`(?:${UNITS.join("|")})(?!\p{L})`
   }
 ];
+function keepTogetherText(text2, rules = KEEP_TOGETHER_RULES) {
+  return rules.reduce(
+    (glued, rule) => glued.replace(
+      new RegExp(`(?<=${rule.before})( +)(?=${rule.after})`, "gu"),
+      (spaces) => NO_BREAK_SPACE.repeat(spaces.length)
+    ),
+    text2
+  );
+}
+function keepTogether(value, rules = KEEP_TOGETHER_RULES) {
+  const glued = keepTogetherText(flatten(value), rules);
+  let offset = 0;
+  const rewrite = (inlines) => inlines.map((inline) => {
+    switch (inline.kind) {
+      case "text": {
+        const start = offset;
+        offset += inline.value.length;
+        return { ...inline, value: glued.slice(start, offset) };
+      }
+      case "break":
+        offset += 1;
+        return inline;
+      default:
+        return { ...inline, children: rewrite(inline.children) };
+    }
+  });
+  return rewrite(value);
+}
+function flatten(value) {
+  return value.map((inline) => {
+    switch (inline.kind) {
+      case "text":
+        return inline.value;
+      case "break":
+        return "\n";
+      default:
+        return flatten(inline.children);
+    }
+  }).join("");
+}
 var LABEL_EXCEPTIONS = [
   { name: "a time", pattern: String.raw`\d{1,2}:\d{2}` },
   { name: "a URL", pattern: String.raw`\p{L}[\p{L}\d+.-]*://\S*` }
@@ -24190,6 +24236,148 @@ function mark(shape, height, fill, name) {
 function reportOverflow(report, bottom, limit) {
   const overflow = bottom - limit;
   if (overflow > 0) report({ code: "W_TEMPLATE_OVERFLOW", overflow });
+}
+var ORPHAN_LIMITS = { shrink: 0.08, tracking: 0.01 };
+var SIZE_STEP = 1;
+var TRACKING_STEPS = 4;
+function settle2(request) {
+  const { size, layout, measure } = request;
+  const limits = request.limits ?? ORPHAN_LIMITS;
+  const first = layout({ size, letterSpacing: 0 });
+  const orphanAt = (text2) => {
+    const measured2 = measure(text2);
+    return measured2 === void 0 ? void 0 : orphanOf(text2.runs, measured2.runs);
+  };
+  const measured = measure(first.text);
+  const found = measured === void 0 ? void 0 : orphanOf(first.text.runs, measured.runs);
+  if (found === void 0) return { setting: { size, letterSpacing: 0 }, laid: first.laid };
+  const rebroken = measured === void 0 || limits.rebreak === false ? void 0 : rebreak(first.text.runs, measured.runs);
+  const rebrokenSetting = rebroken === void 0 ? void 0 : { size, letterSpacing: 0, runs: rebroken };
+  const rebrokenTry = rebrokenSetting === void 0 ? void 0 : layout(rebrokenSetting);
+  if (rebrokenSetting !== void 0 && rebrokenTry?.fits === true && orphanAt(rebrokenTry.text) === void 0)
+    return { setting: rebrokenSetting, laid: rebrokenTry.laid };
+  const smallest = Math.ceil(size * (1 - limits.shrink));
+  for (let candidate = size; candidate >= smallest; candidate -= SIZE_STEP) {
+    for (const em of trackings(limits.tracking)) {
+      if (candidate === size && em === 0) continue;
+      const setting = { size: candidate, letterSpacing: round(em * candidate) };
+      const tried = layout(setting);
+      if (tried.fits && orphanAt(tried.text) === void 0) return { setting, laid: tried.laid };
+    }
+  }
+  if (rebrokenSetting !== void 0 && rebrokenTry?.fits === true) {
+    const remeasured = measure(rebrokenTry.text);
+    if (remeasured !== void 0 && orphanOf(first.text.runs, remeasured.runs) === void 0)
+      return { setting: rebrokenSetting, laid: rebrokenTry.laid };
+  }
+  return { setting: { size, letterSpacing: 0 }, laid: first.laid, orphan: found };
+}
+function trackings(limit) {
+  const steps = [0];
+  if (limit <= 0) return steps;
+  for (let step = 1; step <= TRACKING_STEPS; step += 1) {
+    const em = limit * step / TRACKING_STEPS;
+    steps.push(-em, em);
+  }
+  return steps;
+}
+function round(value) {
+  return Math.round(value * 1e3) / 1e3;
+}
+function orphanOf(written, laid) {
+  return firstOrphaned(written, laid)?.word;
+}
+function firstOrphaned(written, laid) {
+  const paragraphs = linesOf(written).map((line2) => wordsOf(line2).length);
+  const lines2 = linesOf(laid);
+  let line = 0;
+  for (const [paragraph, count] of paragraphs.entries()) {
+    if (count === 0) {
+      line += 1;
+      continue;
+    }
+    let seen = 0;
+    const taken = [];
+    while (seen < count && line < lines2.length) {
+      const text2 = lines2[line] ?? "";
+      seen += wordsOf(text2).length;
+      taken.push(text2);
+      line += 1;
+    }
+    const last = wordsOf(taken.at(-1) ?? "");
+    if (taken.length > 1 && last.length === 1) {
+      return { paragraph, lines: taken, word: last[0] ?? "" };
+    }
+  }
+  return void 0;
+}
+function rebreak(written, laid) {
+  const orphaned = firstOrphaned(written, laid);
+  if (orphaned === void 0) return void 0;
+  const before = orphaned.lines.slice(0, -1).join(" ");
+  const moved = pieceStarts(before).length - 1;
+  if (moved <= 0) return void 0;
+  return withBreakBefore(written, orphaned.paragraph, moved);
+}
+function pieceStarts(text2) {
+  const starts = [];
+  for (let index = 0; index < text2.length; index += 1) {
+    if (text2[index] === " " || index > 0 && text2[index - 1] !== " ") continue;
+    const end = text2.indexOf(" ", index);
+    const word = text2.slice(index, end < 0 ? void 0 : end);
+    if (starts.length === 0 || !isStandaloneOperator2(word)) starts.push(index);
+  }
+  return starts;
+}
+function withBreakBefore(runs, paragraph, piece) {
+  const cut2 = pieceStarts(linesOf(runs)[paragraph] ?? "")[piece];
+  if (cut2 === void 0) return [...runs];
+  const result = [];
+  let current = 0;
+  let offset = 0;
+  let done = false;
+  for (const run3 of runs) {
+    if (run3.kind === "break") {
+      current += 1;
+      result.push(run3);
+      continue;
+    }
+    const start = offset;
+    if (current === paragraph) offset += run3.text.length;
+    if (done || current !== paragraph || cut2 >= offset) {
+      result.push(run3);
+      continue;
+    }
+    const at2 = cut2 - start;
+    const head = run3.text.slice(0, at2).replace(/ +$/u, "");
+    if (head !== "") result.push({ ...run3, text: head });
+    else trimLast(result);
+    result.push({ kind: "break" }, { ...run3, text: run3.text.slice(at2) });
+    done = true;
+  }
+  return result;
+}
+function trimLast(runs) {
+  const last = runs.at(-1);
+  if (last?.kind !== "text") return;
+  const text2 = last.text.replace(/ +$/u, "");
+  if (text2 === "") runs.pop();
+  else runs[runs.length - 1] = { ...last, text: text2 };
+}
+function linesOf(runs) {
+  const lines2 = [""];
+  for (const run3 of runs) {
+    if (run3.kind === "break") lines2.push("");
+    else lines2[lines2.length - 1] += run3.text;
+  }
+  return lines2;
+}
+function wordsOf(line) {
+  return line.split(/\s+/u).filter((word) => word !== "");
+}
+function reportOrphan(report, word) {
+  if (word !== void 0)
+    report({ code: "W_TEMPLATE_ORPHAN", word: [...word].slice(0, ORPHAN_WORD_LIMIT2).join("") });
 }
 function lines(text2) {
   const result = [];
@@ -24310,6 +24498,14 @@ var TABLE_VALUE_DEFAULTS = {
 
 // src/template.ts
 var DEFAULT_TITLE = ["Destaques do", "Informativo"];
+var KEEP_TOGETHER = [
+  ...KEEP_TOGETHER_RULES,
+  {
+    name: "short word + next word",
+    before: String.raw`(?<![\p{L}\p{N}])(?:[aàoeéAÀOEÉ]|[dD]e)`,
+    after: String.raw`\S`
+  }
+];
 var DEFAULT_CALL = "Curta este post para sabermos se as informa\xE7\xF5es foram \xFAteis para voc\xEA!";
 var DEFAULT_CLOSING = "Bons estudos!";
 var COLOR_DEFAULTS = {
@@ -24340,7 +24536,12 @@ var NUMBER_DEFAULTS = {
   "question-floor": 28,
   /** The answer's size and its floor. */
   "answer-size": 32,
-  "answer-floor": 22
+  "answer-floor": 22,
+  /**
+   * The most letter spacing, in em, the question, the answer or the source may take or give so
+   * that none ends on a word of its own (Tyto ADR 0167); their size never moves for it.
+   */
+  "orphan-tracking": ORPHAN_LIMITS.tracking
 };
 var SERIF = { family: "Newsreader", source: "system" };
 var SANS = { family: "Roboto", source: "system" };
@@ -24528,11 +24729,13 @@ function stack(sections, top) {
   }
   return { nodes, bottom: y };
 }
-function textSection(context, name, runs, written, style2, gap) {
-  const place = (capTop) => richText(name, runs, { ...style2, capTop });
+function textSection(context, name, runs, written, style2, gap, tuning) {
+  const drawnRuns = tuning?.runs ?? runs;
+  const spacing = tuning === void 0 ? {} : { spacing: tuning.letterSpacing };
+  const place = (capTop) => richText(name, drawnRuns, { ...style2, ...spacing, capTop });
   const count = measuredLines(context, place(0), written, style2.size, style2.width);
   const height = (count - 1) * style2.size * style2.lineHeight + style2.size * METRICS[style2.family].cap;
-  return { gap, height, draw: (top) => [place(top)] };
+  return { gap, height, draw: (top) => [place(top)], text: place(0) };
 }
 function bandSection(ink, name, inner, padding, edge, gap) {
   const height = padding.top + inner.height + padding.bottom;
@@ -24633,18 +24836,50 @@ function ruling(context, ink, number4) {
       )
     )
   );
-  let laid = layRuling(context, ink, parts, questionSize, answerSize);
+  let sizes = { question: questionSize, answer: answerSize };
+  let laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
   for (let step = 1; laid.height > limit && step <= floorStep; step += 1) {
     const question = Math.max(number4("question-floor"), questionSize - step);
     const answer = Math.max(number4("answer-floor"), answerSize * (question / questionSize));
-    laid = layRuling(context, ink, parts, question, answer);
+    sizes = { question, answer };
+    laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
   }
-  return laid;
+  const fitsAtSize = laid.height <= limit;
+  const tracking = number4("orphan-tracking");
+  let tunings = /* @__PURE__ */ new Map();
+  for (const [name, size] of [
+    ["pergunta", sizes.question],
+    ["resposta", sizes.answer],
+    ["fonte", RULING.sourceSize]
+  ]) {
+    if (laid.texts?.get(name) === void 0) continue;
+    const settled = settle2({
+      size,
+      measure: context.measure,
+      limits: { shrink: 0, tracking },
+      layout: (setting) => {
+        const tried = new Map(tunings);
+        tried.set(name, {
+          letterSpacing: setting.letterSpacing,
+          ...setting.runs === void 0 ? {} : { runs: setting.runs }
+        });
+        const sheet = layRuling(context, ink, parts, sizes, tried);
+        const text2 = sheet.texts?.get(name) ?? laid.texts.get(name);
+        return { text: text2, fits: !fitsAtSize || sheet.height <= limit, laid: tried };
+      }
+    });
+    tunings = settled.laid;
+    reportOrphan(context.report, settled.orphan);
+  }
+  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
 }
 function present(written) {
   return written !== void 0 && written.length > 0;
 }
-function layRuling(context, ink, parts, questionSize, answerSize) {
+function layRuling(context, ink, parts, sizes, tunings) {
+  const questionSize = sizes.question;
+  const answerSize = sizes.answer;
+  const texts = /* @__PURE__ */ new Map();
   const sections = [...titleSections(context, ink, titleLines(context), "left")];
   if (present(parts.subject)) {
     const runs = runsOfLines(parts.subject, {
@@ -24675,22 +24910,23 @@ function layRuling(context, ink, parts, questionSize, answerSize) {
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink("ink") },
       { bold: MEDIUM }
     ).map((item) => italic(item, ink("highlight-color")));
-    sections.push(
-      textSection(
-        context,
-        "pergunta",
-        runs,
-        parts.question,
-        {
-          family: "CircularXX",
-          size: questionSize,
-          lineHeight: RULING.questionLineHeight,
-          x: INNER.textX,
-          width: INNER.questionW
-        },
-        RULING.question
-      )
+    const section = textSection(
+      context,
+      "pergunta",
+      runs,
+      parts.question,
+      {
+        family: "CircularXX",
+        size: questionSize,
+        lineHeight: RULING.questionLineHeight,
+        x: INNER.textX,
+        width: INNER.questionW
+      },
+      RULING.question,
+      tunings.get("pergunta")
     );
+    if (section.text !== void 0) texts.set("pergunta", section.text);
+    sections.push(section);
   }
   if (present(parts.answer)) {
     const runs = runsOfLines(
@@ -24710,8 +24946,10 @@ function layRuling(context, ink, parts, questionSize, answerSize) {
         x: INNER.textX,
         width: INNER.textW
       },
-      0
+      0,
+      tunings.get("resposta")
     );
+    if (inner.text !== void 0) texts.set("resposta", inner.text);
     sections.push(
       bandSection(ink, "bloco-resposta", inner, RULING.answerPadding, "top", RULING.answer)
     );
@@ -24723,25 +24961,26 @@ function layRuling(context, ink, parts, questionSize, answerSize) {
       weight: LIGHT,
       color: ink("ink")
     });
-    sections.push(
-      textSection(
-        context,
-        "fonte",
-        runs,
-        parts.source,
-        {
-          family: "Roboto",
-          size: RULING.sourceSize,
-          lineHeight: RULING.sourceLineHeight,
-          x: INNER.textX,
-          width: INNER.textW
-        },
-        RULING.source
-      )
+    const section = textSection(
+      context,
+      "fonte",
+      runs,
+      parts.source,
+      {
+        family: "Roboto",
+        size: RULING.sourceSize,
+        lineHeight: RULING.sourceLineHeight,
+        x: INNER.textX,
+        width: INNER.textW
+      },
+      RULING.source,
+      tunings.get("fonte")
     );
+    if (section.text !== void 0) texts.set("fonte", section.text);
+    sections.push(section);
   }
   const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes };
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
 }
 function italic(item, highlight) {
   if (item.kind !== "text") return item;
@@ -24866,7 +25105,7 @@ function icons(ink, y) {
 function fieldOf(context, name) {
   const value = context.slots[name]?.value;
   if (value?.kind !== "rich-text") return void 0;
-  return lines(value.text).filter((line) => plain(line).trim() !== "");
+  return lines(value.text).filter((line) => plain(line).trim() !== "").map((line) => keepTogether(line, KEEP_TOGETHER));
 }
 function richLine(words) {
   return [{ kind: "text", value: words, range: { start: 0, end: words.length } }];
@@ -24894,7 +25133,7 @@ function richText(name, runs, placed) {
     runs: [head ?? empty, ...tail],
     ...placed.width === void 0 ? {} : { box: { w: placed.width } },
     align: placed.align ?? "left",
-    letterSpacing: (placed.tracking ?? 0) * placed.size,
+    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
     lineHeight,
     transform: {
       x: placed.x,
