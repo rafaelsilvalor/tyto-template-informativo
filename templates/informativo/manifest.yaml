@@ -1,10 +1,12 @@
 name: informativo
-version: 0.1.0
+version: 0.2.0
 # The ocre brand of the private brand kit (Tyto ADR 0063): its logo and signature. Without
 # that brand in the installed kit, the logo and the signature are placeholders.
 brand: ocre
 description: A court bulletin carousel at 1080×1350 — one ruling per slide on a paper card that grows with its words, and a back cover.
-# Every face the slides set, so the plugin's process can measure them (Tyto ADR 0048).
+# Every face the slides set, so the plugin's process can measure them (Tyto ADR 0048). The
+# question is italic, so its faces are declared italic: a face missing here is measured as
+# nothing, the card is laid out from an estimate, and the gaps around the question go wrong.
 # Newsreader and Roboto are Google families, fetched once when the machine lacks them (Tyto ADR
 # 0120). CircularXX is licensed: it crosses only under `font:CircularXX`, approved at install.
 faces:
@@ -12,23 +14,35 @@ faces:
   - { family: Roboto, weight: 300 }
   - { family: Roboto, weight: 500 }
   - { family: Roboto, weight: 600 }
-  - { family: CircularXX, weight: 400 }
-  - { family: CircularXX, weight: 500 }
+  - { family: CircularXX, weight: 400, style: italic }
+  - { family: CircularXX, weight: 500, style: italic }
 fonts:
   CircularXX: { alternatives: [Inter, Manrope, DM Sans] }
 formats: [grid]
 slots:
-  # The bulletin, the court and its number: `TRZ 412`. The title reads `INFORMATIVO TRZ 412`; the
-  # back cover drops the number.
-  informativo: { type: rich-text, required: true, max: 40 }
+  # The title on every slide. With two lines or more the first is the kicker, smaller, and the
+  # rest the title; one line is the title alone; set in capitals. Not written, it is
+  # `Destaques do` / `Informativo`. Written with no lines, no title is drawn. The back cover
+  # drops a trailing number from its last line (`Informativo TRZ 412` → `INFORMATIVO TRZ`).
+  titulo: { type: rich-text }
   # The picture under the card, 1080 × 1350, full bleed. In the frontmatter: `fundo: ./arte.png`.
   # Without it, the configuration's `background`.
   fundo: { type: image }
-  # One slide each, in order. A ruling's lines: the subject (the band), the question (italic,
-  # `**x**` a highlight), then the answer, one line per paragraph (`**x**` in bold); with four
-  # lines or more the last is the source. The back cover is `::lamina {contracapa}`: empty, or a
-  # first line that replaces the call to like the post and a second that replaces "Bons estudos!".
+  # One slide each, in order. A slide holds no lines of its own: its sections are the fields
+  # below, each written after the slide's `::lamina`, each any number of lines. A field not
+  # written is not drawn, and the sections after it close up.
   lamina: { type: rich-text, repeat: true, min: 1, max: 10 }
+  # A ruling's sections, top to bottom. `tema`: the band (the area of law). `pergunta`: italic,
+  # `**x**` the highlight colour. `resposta`: the block, one line per paragraph, `**x**` bold.
+  # `fonte`: the case, the judge, the date.
+  tema: { type: rich-text, per: lamina }
+  pergunta: { type: rich-text, per: lamina }
+  resposta: { type: rich-text, per: lamina }
+  fonte: { type: rich-text, per: lamina }
+  # The back cover's band and closing line. Not written, they say the reference's words;
+  # written with no lines, they are not drawn.
+  chamada: { type: rich-text, per: lamina }
+  fecho: { type: rich-text, per: lamina }
 adjustments:
   contracapa: { type: flag, applies: [lamina] }
 # What a configuration may change (Tyto ADR 0153). Each default is the reference art's;

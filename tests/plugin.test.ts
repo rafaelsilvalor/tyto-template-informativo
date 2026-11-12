@@ -39,7 +39,7 @@ const call: TemplateCall = {
   idPrefix: 'artwork-0-grid',
   artwork: { id: 'artwork-0', index: 0, count: 1 },
   slots: {
-    informativo: { name: 'informativo', value: rich('TRZ 412'), adjustments: [] },
+    pergunta: { name: 'pergunta', value: rich('Uma pergunta?'), adjustments: [] },
     lamina: { name: 'lamina', value: rich('Direito Civil'), adjustments: [] },
   },
   adjustments: {},

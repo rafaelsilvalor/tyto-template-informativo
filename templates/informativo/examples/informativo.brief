@@ -2,21 +2,37 @@
 template: informativo
 formats: [grid]
 ---
-// Two rulings and the back cover, in invented copy.
+// Three rulings and the back cover, in invented copy. Every section is a field of its own,
+// written under the slide's `::lamina`; a field left out is not drawn.
 
-::informativo
-  TRZ 412
+::titulo
+  Destaques do
+  Informativo TRZ 412
 
 ::lamina
+::tema
   Direito Administrativo
+::pergunta
   Uma autarquia municipal pode cobrar taxa pela emissão de **certidão de regularidade**?
+::resposta
   **Não.** Segundo o entendimento firmado pelo tribunal no **Tema 9.999**, a certidão é serviço público de interesse do próprio cidadão e a Constituição garante sua emissão gratuita.
+::fonte
   Recurso de exemplo 1.234/ZZ, rel. Min. Fulana de Tal, Primeira Turma, julgado em 01/02/2026.
 
 ::lamina
+::tema
   Direito Civil
+  Locação
+::pergunta
   O prazo para pedir a revisão de um contrato de locação começa a contar da assinatura ou do primeiro reajuste?
-  **Do primeiro reajuste.** O tribunal entendeu que antes dele não existe o desequilíbrio que justifica o pedido.
-  Recurso de exemplo 5.678/ZZ, rel. Min. Beltrano de Tal, Terceira Turma, julgado em 03/04/2026.
+::resposta
+  **Do primeiro reajuste.**
+  Antes dele não existe o desequilíbrio que justifica o pedido.
+
+::lamina
+::pergunta
+  Uma lâmina pode ter só a pergunta e a resposta?
+::resposta
+  **Sim.** As seções que o brief não escreve não aparecem, e as outras se aproximam.
 
 ::lamina {contracapa}

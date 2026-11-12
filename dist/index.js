@@ -5071,17 +5071,17 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack, resolve) {
+function isRecursive(inst, stack2, resolve) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
-  if (stack.has(inst))
+  if (stack2.has(inst))
     return PROVEN;
-  stack.add(inst);
+  stack2.add(inst);
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve);
+      const answer = isRecursive(child, stack2, resolve);
       if (answer > result)
         result = answer;
     }
@@ -5092,7 +5092,7 @@ function isRecursive(inst, stack, resolve) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack2, resolve) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -5157,7 +5157,7 @@ function isRecursive(inst, stack, resolve) {
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
       const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
-      merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
+      merge2(inner ? isRecursive(inner, stack2, false) : ASSUMED);
       break;
     }
     // a leaf by choice: `parts` are regex fragments, not data positions
@@ -5200,7 +5200,7 @@ function isRecursive(inst, stack, resolve) {
       }
     }
   }
-  stack.delete(inst);
+  stack2.delete(inst);
   return settle(inst, result);
 }
 function settle(inst, answer) {
@@ -24309,7 +24309,7 @@ var TABLE_VALUE_DEFAULTS = {
 };
 
 // src/template.ts
-var KICKER = "DESTAQUES DO";
+var DEFAULT_TITLE = ["Destaques do", "Informativo"];
 var DEFAULT_CALL = "Curta este post para sabermos se as informa\xE7\xF5es foram \xFAteis para voc\xEA!";
 var DEFAULT_CLOSING = "Bons estudos!";
 var COLOR_DEFAULTS = {
@@ -24386,45 +24386,53 @@ var ARROW_ON = "M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z";
 var ARROW_DOWN = "M690 20H718V40H727L712 57L697 40H706V28H690Z";
 var SIGNATURE2 = { x: 215, capTop: 22, size: 30 };
 var SHADOW = { y: 7, blur: 71, alpha: 0.2, grey: 49 };
-var RULING = {
-  /** Sheet top → the kicker's capitals. */
-  kicker: 52,
+var TITLE3 = {
   kickerSize: 36,
-  /** Kicker capitals → the title's capitals. */
-  title: 50,
-  titleSize: 48,
-  /** Sheet top → subject band. */
-  band: 178,
-  bandH: 68,
+  size: 48,
+  lineHeight: 1.2,
+  kickerToTitle: 26
+};
+var RULING = {
+  /** Sheet top → the first section's top. */
+  top: 52,
+  /** → the subject band; the band pads its text 22.6 px above and below, 68 px for one line. */
+  band: 44,
+  bandPadding: { top: 22.6, bottom: 22.6 },
   bandSize: 32,
-  /** Band bottom → the question's capitals. */
+  bandLineHeight: 1.5,
+  /** → the question's capitals. */
   question: 56,
   questionLineHeight: 1.5,
-  /** The question's last line → the answer block's top. */
-  answerGap: 51,
-  /** Answer block top → its first capitals; its last line → block bottom. */
-  answerTop: 46,
-  answerBottom: 26,
+  /** → the answer block's top; the block pads its text 46 px above and 26 below. */
+  answer: 51,
+  answerPadding: { top: 46, bottom: 26 },
   answerLineHeight: 1.5,
   answerEdge: 13,
-  /** Answer block bottom → the source's capitals. */
+  /** → the source's capitals. */
   source: 27,
   sourceSize: 24,
   sourceLineHeight: 1.2,
-  /** The source's last line → sheet bottom. */
+  /** The last section's foot → sheet bottom. */
   bottom: 24
 };
 var BACK = {
-  sheet: 812,
-  kicker: 91,
-  band: 195,
-  bandH: 130,
+  /** Sheet top → the first section's top. */
+  top: 91,
+  /** → the call's band; the band pads its two lines 23 px above and 31 below, 130 px. */
+  band: 22,
+  bandPadding: { top: 23, bottom: 31 },
   bandSize: 40,
   bandLineHeight: 1.2,
-  closing: 362,
+  /** → "Bons estudos!"'s capitals. */
+  closing: 37,
   closingSize: 72,
-  heart: { x: 444, y: 453, d: 192 },
-  icons: { x: 461, y: 684 }
+  /** → the heart, then → the icons, then → sheet bottom. */
+  heartGap: 43,
+  heart: { x: 444, d: 192 },
+  iconsGap: 39,
+  icons: { x: 461 },
+  iconsHeight: 48,
+  bottom: 80
 };
 function roleOf(context) {
   return context.adjustments["contracapa"] === true ? "contracapa" : "ruling";
@@ -24510,32 +24518,79 @@ function card(context, ink, top, sheet) {
     ]
   });
 }
-function title(ink, court2, capTop, align) {
+function stack(sections, top) {
+  const nodes = [];
+  let y = top;
+  for (const [index, section] of sections.entries()) {
+    if (index > 0) y += section.gap;
+    nodes.push(...section.draw(y));
+    y += section.height;
+  }
+  return { nodes, bottom: y };
+}
+function textSection(context, name, runs, written, style2, gap) {
+  const place = (capTop) => richText(name, runs, { ...style2, capTop });
+  const count = measuredLines(context, place(0), written, style2.size, style2.width);
+  const height = (count - 1) * style2.size * style2.lineHeight + style2.size * METRICS[style2.family].cap;
+  return { gap, height, draw: (top) => [place(top)] };
+}
+function bandSection(ink, name, inner, padding, edge, gap) {
+  const height = padding.top + inner.height + padding.bottom;
+  return {
+    gap,
+    height,
+    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)]
+  };
+}
+function runsOfLines(written, style2, options) {
+  return written.flatMap((line, index) => [
+    ...index === 0 ? [] : [lineBreak()],
+    ...runsOf(line, style2, options)
+  ]);
+}
+function upper(item) {
+  return item.kind === "text" ? { ...item, text: item.text.toUpperCase() } : item;
+}
+function titleSections(context, ink, written, align) {
+  if (written.length === 0) return [];
   const x = align === "left" ? INNER.textX : CARD.x;
   const width = align === "left" ? INNER.textW : CARD.w;
-  const placed = {
-    family: "Newsreader",
+  const runStyle = (size) => ({
     font: SERIF,
+    size,
+    weight: EXTRABOLD,
+    color: ink("title-color")
+  });
+  const textStyle = (size) => ({
+    family: "Newsreader",
+    size,
+    lineHeight: TITLE3.lineHeight,
     x,
     width,
     align,
-    weight: EXTRABOLD,
     tracking: TITLE_TRACKING
-  };
-  return [
-    plainText("chapeu", KICKER, {
-      ...placed,
-      capTop,
-      size: RULING.kickerSize,
-      color: ink("title-color")
-    }),
-    plainText("titulo", `INFORMATIVO  ${court2.toUpperCase()}`.trim(), {
-      ...placed,
-      capTop: capTop + RULING.title,
-      size: RULING.titleSize,
-      color: ink("title-color")
-    })
-  ];
+  });
+  const [first, ...rest] = written;
+  const kicker = rest.length > 0 && first !== void 0 ? [first] : [];
+  const main = rest.length > 0 ? rest : [...written];
+  const sections = [];
+  if (kicker.length > 0) {
+    const runs2 = runsOfLines(kicker, runStyle(TITLE3.kickerSize)).map(upper);
+    sections.push(textSection(context, "chapeu", runs2, kicker, textStyle(TITLE3.kickerSize), 0));
+  }
+  const runs = runsOfLines(main, runStyle(TITLE3.size)).map(upper);
+  sections.push(
+    textSection(context, "titulo", runs, main, textStyle(TITLE3.size), TITLE3.kickerToTitle)
+  );
+  return sections;
+}
+function titleLines(context) {
+  return fieldOf(context, "titulo") ?? DEFAULT_TITLE.map(richLine);
+}
+function withoutNumber(written) {
+  const last = written[written.length - 1];
+  if (last === void 0) return [];
+  return [...written.slice(0, -1), richLine(plain(last).replace(/\s+\d[\d.]*$/u, ""))];
 }
 function band(ink, name, y, height, edge) {
   const radius = 6;
@@ -24556,14 +24611,16 @@ function band(ink, name, y, height, edge) {
     })
   ];
 }
-function rulingOf(written) {
-  const [subject, question, ...rest] = written;
-  const source = rest.length >= 2 ? rest[rest.length - 1] : void 0;
-  const answer = source === void 0 ? rest : rest.slice(0, -1);
-  return { subject, question, answer, source };
+function rulingOf(context) {
+  return {
+    subject: fieldOf(context, "tema"),
+    question: fieldOf(context, "pergunta"),
+    answer: fieldOf(context, "resposta"),
+    source: fieldOf(context, "fonte")
+  };
 }
 function ruling(context, ink, number4) {
-  const parts = rulingOf(slideLines(context));
+  const parts = rulingOf(context);
   const limit = number4("card-max-height") - CARD.tabs;
   const questionSize = number4("question-size");
   const answerSize = number4("answer-size");
@@ -24584,93 +24641,107 @@ function ruling(context, ink, number4) {
   }
   return laid;
 }
+function present(written) {
+  return written !== void 0 && written.length > 0;
+}
 function layRuling(context, ink, parts, questionSize, answerSize) {
-  const children = [...title(ink, court(context), RULING.kicker, "left")];
-  children.push(...band(ink, "tema", RULING.band, RULING.bandH, "side"));
-  if (parts.subject !== void 0) {
-    const runs = runsOf(parts.subject, {
+  const sections = [...titleSections(context, ink, titleLines(context), "left")];
+  if (present(parts.subject)) {
+    const runs = runsOfLines(parts.subject, {
       font: SANS,
       size: RULING.bandSize,
       weight: SEMIBOLD,
       color: ink("on-accent")
     });
-    children.push(
-      richText("tema-texto", runs, {
+    const inner = textSection(
+      context,
+      "tema-texto",
+      runs,
+      parts.subject,
+      {
         family: "Roboto",
-        x: INNER.textX,
-        capTop: RULING.band + (RULING.bandH - RULING.bandSize * METRICS.Roboto.cap) / 2,
         size: RULING.bandSize,
+        lineHeight: RULING.bandLineHeight,
+        x: INNER.textX,
         width: INNER.textW
-      })
+      },
+      0
     );
+    sections.push(bandSection(ink, "tema", inner, RULING.bandPadding, "side", RULING.band));
   }
-  let y = RULING.band + RULING.bandH + RULING.question;
-  if (parts.question !== void 0) {
-    const runs = runsOf(
+  if (present(parts.question)) {
+    const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink("ink") },
       { bold: MEDIUM }
     ).map((item) => italic(item, ink("highlight-color")));
-    const node2 = richText("pergunta", runs, {
-      family: "CircularXX",
-      x: INNER.textX,
-      capTop: y,
-      size: questionSize,
-      width: INNER.questionW,
-      lineHeight: RULING.questionLineHeight
-    });
-    children.push(node2);
-    const count = measuredLines(context, node2, [parts.question], questionSize, INNER.questionW);
-    y += (count - 1) * questionSize * RULING.questionLineHeight + questionSize * 0.709;
-  }
-  y += RULING.answerGap;
-  const answerTop = y;
-  let answerHeight = RULING.answerTop + RULING.answerBottom;
-  let answerNode;
-  if (parts.answer.length > 0) {
-    const runs = parts.answer.flatMap((paragraph, index) => [
-      ...index === 0 ? [] : [lineBreak()],
-      ...runsOf(
-        paragraph,
-        { font: SANS, size: answerSize, weight: LIGHT, color: ink("on-accent") },
-        { bold: MEDIUM }
+    sections.push(
+      textSection(
+        context,
+        "pergunta",
+        runs,
+        parts.question,
+        {
+          family: "CircularXX",
+          size: questionSize,
+          lineHeight: RULING.questionLineHeight,
+          x: INNER.textX,
+          width: INNER.questionW
+        },
+        RULING.question
       )
-    ]);
-    answerNode = richText("resposta", runs, {
-      family: "Roboto",
-      x: INNER.textX,
-      capTop: answerTop + RULING.answerTop,
-      size: answerSize,
-      width: INNER.textW,
-      lineHeight: RULING.answerLineHeight
-    });
-    const count = measuredLines(context, answerNode, parts.answer, answerSize, INNER.textW);
-    answerHeight += (count - 1) * answerSize * RULING.answerLineHeight + answerSize * 0.711;
+    );
   }
-  children.push(...band(ink, "bloco-resposta", answerTop, answerHeight, "top"));
-  if (answerNode !== void 0) children.push(answerNode);
-  y = answerTop + answerHeight;
-  if (parts.source !== void 0) {
-    y += RULING.source;
-    const runs = runsOf(parts.source, {
+  if (present(parts.answer)) {
+    const runs = runsOfLines(
+      parts.answer,
+      { font: SANS, size: answerSize, weight: LIGHT, color: ink("on-accent") },
+      { bold: MEDIUM }
+    );
+    const inner = textSection(
+      context,
+      "resposta",
+      runs,
+      parts.answer,
+      {
+        family: "Roboto",
+        size: answerSize,
+        lineHeight: RULING.answerLineHeight,
+        x: INNER.textX,
+        width: INNER.textW
+      },
+      0
+    );
+    sections.push(
+      bandSection(ink, "bloco-resposta", inner, RULING.answerPadding, "top", RULING.answer)
+    );
+  }
+  if (present(parts.source)) {
+    const runs = runsOfLines(parts.source, {
       font: SANS,
       size: RULING.sourceSize,
       weight: LIGHT,
       color: ink("ink")
     });
-    const node2 = richText("fonte", runs, {
-      family: "Roboto",
-      x: INNER.textX,
-      capTop: y,
-      size: RULING.sourceSize,
-      width: INNER.textW,
-      lineHeight: RULING.sourceLineHeight
-    });
-    children.push(node2);
-    const count = measuredLines(context, node2, [parts.source], RULING.sourceSize, INNER.textW);
-    y += (count - 1) * RULING.sourceSize * RULING.sourceLineHeight + RULING.sourceSize * 0.711;
+    sections.push(
+      textSection(
+        context,
+        "fonte",
+        runs,
+        parts.source,
+        {
+          family: "Roboto",
+          size: RULING.sourceSize,
+          lineHeight: RULING.sourceLineHeight,
+          x: INNER.textX,
+          width: INNER.textW
+        },
+        RULING.source
+      )
+    );
   }
-  return { height: Math.round(y + RULING.bottom), arrow: ARROW_ON, children };
+  const { nodes, bottom } = stack(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes };
 }
 function italic(item, highlight) {
   if (item.kind !== "text") return item;
@@ -24678,42 +24749,68 @@ function italic(item, highlight) {
   return { ...item, style: "italic", ...bold ? { color: solid(highlight) } : {} };
 }
 function backCover(context, ink) {
-  const [callLine, closingLine] = slideLines(context);
-  const call = callLine === void 0 ? DEFAULT_CALL : plain(callLine);
-  const closing = closingLine === void 0 ? DEFAULT_CLOSING : plain(closingLine);
-  const children = [
-    ...title(ink, court(context).replace(/\s+\d[\d.]*$/u, ""), BACK.kicker, "center"),
-    ...band(ink, "chamada", BACK.band, BACK.bandH, "side"),
-    plainText("chamada-texto", call, {
-      family: "Roboto",
+  const call = fieldOf(context, "chamada") ?? [richLine(DEFAULT_CALL)];
+  const closing = fieldOf(context, "fecho") ?? [richLine(DEFAULT_CLOSING)];
+  const sections = [
+    ...titleSections(context, ink, withoutNumber(titleLines(context)), "center")
+  ];
+  if (call.length > 0) {
+    const runs = runsOfLines(call, {
       font: SANS,
-      x: INNER.bandX + INNER.edge,
-      width: INNER.bandW - INNER.edge,
-      align: "center",
-      capTop: BACK.band + 23,
       size: BACK.bandSize,
       weight: SEMIBOLD,
-      lineHeight: BACK.bandLineHeight,
       color: ink("on-accent")
-    }),
-    plainText("fecho", closing, {
-      family: "Newsreader",
+    });
+    const inner = textSection(
+      context,
+      "chamada-texto",
+      runs,
+      call,
+      {
+        family: "Roboto",
+        size: BACK.bandSize,
+        lineHeight: BACK.bandLineHeight,
+        x: INNER.bandX + INNER.edge,
+        width: INNER.bandW - INNER.edge,
+        align: "center"
+      },
+      0
+    );
+    sections.push(bandSection(ink, "chamada", inner, BACK.bandPadding, "side", BACK.band));
+  }
+  if (closing.length > 0) {
+    const runs = runsOfLines(closing, {
       font: SERIF,
-      x: CARD.x,
-      width: CARD.w,
-      align: "center",
-      capTop: BACK.closing,
       size: BACK.closingSize,
       weight: EXTRABOLD,
       color: ink("title-color")
-    }),
-    ...heart(ink),
-    ...icons(ink)
-  ];
-  return { height: BACK.sheet, arrow: ARROW_DOWN, children };
+    });
+    sections.push(
+      textSection(
+        context,
+        "fecho",
+        runs,
+        closing,
+        {
+          family: "Newsreader",
+          size: BACK.closingSize,
+          lineHeight: TITLE3.lineHeight,
+          x: CARD.x,
+          width: CARD.w,
+          align: "center",
+          tracking: TITLE_TRACKING
+        },
+        BACK.closing
+      )
+    );
+  }
+  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
+  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
+  const { nodes, bottom } = stack(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
 }
-function heart(ink) {
-  const { x, y, d } = BACK.heart;
+function heart(ink, y) {
+  const { x, d } = BACK.heart;
   const shape = "M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46C135 46 150 58 150 78C150 112 96 150 96 150Z";
   return [
     rect({
@@ -24732,8 +24829,8 @@ function heart(ink) {
     })
   ];
 }
-function icons(ink) {
-  const { x, y } = BACK.icons;
+function icons(ink, y) {
+  const { x } = BACK.icons;
   const stroke = { paint: solid(ink("ink")), width: 4, align: "center" };
   return [
     vector({
@@ -24766,14 +24863,13 @@ function icons(ink) {
     })
   ];
 }
-function court(context) {
-  const value = context.slots["informativo"]?.value;
-  return value?.kind === "rich-text" ? plain(value.text).trim() : "";
-}
-function slideLines(context) {
-  const value = context.slots["lamina"]?.value;
-  if (value?.kind !== "rich-text") return [];
+function fieldOf(context, name) {
+  const value = context.slots[name]?.value;
+  if (value?.kind !== "rich-text") return void 0;
   return lines(value.text).filter((line) => plain(line).trim() !== "");
+}
+function richLine(words) {
+  return [{ kind: "text", value: words, range: { start: 0, end: words.length } }];
 }
 function plainText(name, words, placed) {
   const style2 = {

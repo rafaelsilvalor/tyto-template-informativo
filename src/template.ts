@@ -52,10 +52,10 @@ import type { NodeDraft, TextDraft } from '@tyto/core/template';
 
 /* -------------------------------------------------------------------------- the words -- */
 
-/** The small line over the title, on every slide. */
-export const KICKER = 'DESTAQUES DO';
+/** The title when the brief writes no `::titulo`: the kicker, then the title (the reference's). */
+export const DEFAULT_TITLE = ['Destaques do', 'Informativo'] as const;
 
-/** The back cover's band and closing line when its `::lamina {contracapa}` writes none. */
+/** The back cover's band and closing line when its `::chamada` and `::fecho` are not written. */
 export const DEFAULT_CALL =
   'Curta este post para sabermos se as informações foram úteis para você!';
 export const DEFAULT_CLOSING = 'Bons estudos!';
@@ -116,7 +116,7 @@ const EXTRABOLD = 800;
 
 /**
  * Google's Newsreader 800 sets the title 4 % wider than the reference's NewsreaderRoman
- * (566 px against 589 px for `INFORMATIVO  STJ 906`, measured on the render): this closes it.
+ * (566 px against 589 px for `INFORMATIVO  TRZ 412`, measured on the render): this closes it.
  */
 const TITLE_TRACKING = -0.027;
 
@@ -191,48 +191,64 @@ const SIGNATURE = { x: 215, capTop: 22, size: 30 } as const;
 /** The group shadow: multiply, 20 %, 90° at 7 px, size 142 (Photoshop) → blur 71. */
 const SHADOW = { y: 7, blur: 71, alpha: 0.2, grey: 49 } as const;
 
-/** The ruling's vertical rhythm, in px, each the reference's. */
-const RULING = {
-  /** Sheet top → the kicker's capitals. */
-  kicker: 52,
+/**
+ * The title, on both slides. Its kicker's capitals' foot to the title's capitals: the reference
+ * sets them at 52 and 102, and the kicker's capitals are 36 × 0.67 tall.
+ */
+const TITLE = {
   kickerSize: 36,
-  /** Kicker capitals → the title's capitals. */
-  title: 50,
-  titleSize: 48,
-  /** Sheet top → subject band. */
-  band: 178,
-  bandH: 68,
+  size: 48,
+  lineHeight: 1.2,
+  kickerToTitle: 26,
+} as const;
+
+/**
+ * A ruling's vertical rhythm, each the reference's (a gap runs from the foot of what is above
+ * to the top of what comes next: a text's capitals, a band's edge).
+ */
+const RULING = {
+  /** Sheet top → the first section's top. */
+  top: 52,
+  /** → the subject band; the band pads its text 22.6 px above and below, 68 px for one line. */
+  band: 44,
+  bandPadding: { top: 22.6, bottom: 22.6 },
   bandSize: 32,
-  /** Band bottom → the question's capitals. */
+  bandLineHeight: 1.5,
+  /** → the question's capitals. */
   question: 56,
   questionLineHeight: 1.5,
-  /** The question's last line → the answer block's top. */
-  answerGap: 51,
-  /** Answer block top → its first capitals; its last line → block bottom. */
-  answerTop: 46,
-  answerBottom: 26,
+  /** → the answer block's top; the block pads its text 46 px above and 26 below. */
+  answer: 51,
+  answerPadding: { top: 46, bottom: 26 },
   answerLineHeight: 1.5,
   answerEdge: 13,
-  /** Answer block bottom → the source's capitals. */
+  /** → the source's capitals. */
   source: 27,
   sourceSize: 24,
   sourceLineHeight: 1.2,
-  /** The source's last line → sheet bottom. */
+  /** The last section's foot → sheet bottom. */
   bottom: 24,
 } as const;
 
-/** The back cover, from the sheet's top, the reference's. */
+/** The back cover's rhythm, the reference's, read the same way. */
 const BACK = {
-  sheet: 812,
-  kicker: 91,
-  band: 195,
-  bandH: 130,
+  /** Sheet top → the first section's top. */
+  top: 91,
+  /** → the call's band; the band pads its two lines 23 px above and 31 below, 130 px. */
+  band: 22,
+  bandPadding: { top: 23, bottom: 31 },
   bandSize: 40,
   bandLineHeight: 1.2,
-  closing: 362,
+  /** → "Bons estudos!"'s capitals. */
+  closing: 37,
   closingSize: 72,
-  heart: { x: 444, y: 453, d: 192 },
-  icons: { x: 461, y: 684 },
+  /** → the heart, then → the icons, then → sheet bottom. */
+  heartGap: 43,
+  heart: { x: 444, d: 192 },
+  iconsGap: 39,
+  icons: { x: 461 },
+  iconsHeight: 48,
+  bottom: 80,
 } as const;
 
 /* --------------------------------------------------------------------------- the build -- */
@@ -350,38 +366,150 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
   });
 }
 
-/** The two title lines: the kicker, then `INFORMATIVO` and the brief's `informativo`. */
-function title(
+/* --------------------------------------------------------------------------- the stack -- */
+
+/**
+ * One section of the sheet: drawn only when the brief writes it, and stacked under the one
+ * before it. `gap` is the space above it, from the bottom of what is above (a text's last
+ * capitals, a band's edge) to its own top (its first capitals, its edge). A section the brief
+ * leaves out takes its gap with it, so the next one stands where the reference stands it.
+ */
+interface Section {
+  readonly gap: number;
+  readonly height: number;
+  readonly draw: (top: number) => readonly NodeDraft[];
+}
+
+/** The sections one under another, from `top`, and the y of the last one's bottom. */
+function stack(sections: readonly Section[], top: number): { nodes: NodeDraft[]; bottom: number } {
+  const nodes: NodeDraft[] = [];
+  let y = top;
+  for (const [index, section] of sections.entries()) {
+    if (index > 0) y += section.gap;
+    nodes.push(...section.draw(y));
+    y += section.height;
+  }
+  return { nodes, bottom: y };
+}
+
+interface TextStyle {
+  readonly family: Family;
+  readonly size: number;
+  readonly lineHeight: number;
+  readonly x: number;
+  readonly width: number;
+  readonly align?: 'left' | 'center';
+  readonly tracking?: number;
+}
+
+/**
+ * A text as tall as its lines: from its first capitals to its last line's capitals' foot.
+ * The line count is measured when the context can measure the face, and estimated otherwise.
+ */
+function textSection(
+  context: TemplateContext,
+  name: string,
+  runs: readonly TextRun[],
+  written: readonly RichText[],
+  style: TextStyle,
+  gap: number,
+): Section {
+  const place = (capTop: number): TextDraft => richText(name, runs, { ...style, capTop });
+  const count = measuredLines(context, place(0), written, style.size, style.width);
+  const height =
+    (count - 1) * style.size * style.lineHeight + style.size * METRICS[style.family].cap;
+  return { gap, height, draw: (top) => [place(top)] };
+}
+
+/** A text inside a band: the band's padding around the text section's own height. */
+function bandSection(
   ink: Ink,
-  court: string,
-  capTop: number,
+  name: string,
+  inner: Section,
+  padding: { readonly top: number; readonly bottom: number },
+  edge: 'side' | 'top',
+  gap: number,
+): Section {
+  const height = padding.top + inner.height + padding.bottom;
+  return {
+    gap,
+    height,
+    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)],
+  };
+}
+
+/** Rich-text lines as runs, each line its own line in the text. */
+function runsOfLines(
+  written: readonly RichText[],
+  style: Parameters<typeof runsOf>[1],
+  options?: Parameters<typeof runsOf>[2],
+): TextRun[] {
+  return written.flatMap((line, index) => [
+    ...(index === 0 ? [] : [lineBreak()]),
+    ...runsOf(line, style, options),
+  ]);
+}
+
+/** A run in capitals, as the reference sets its title. */
+function upper(item: TextRun): TextRun {
+  return item.kind === 'text' ? { ...item, text: item.text.toUpperCase() } : item;
+}
+
+/* --------------------------------------------------------------------------- the title -- */
+
+/**
+ * The title, the brief's `::titulo` or the reference's two lines. With two lines or more the
+ * first is the kicker, smaller; one line is the title alone. `::titulo` written empty draws none.
+ */
+function titleSections(
+  context: TemplateContext,
+  ink: Ink,
+  written: readonly RichText[],
   align: 'left' | 'center',
-): readonly NodeDraft[] {
+): Section[] {
+  if (written.length === 0) return [];
   const x = align === 'left' ? INNER.textX : CARD.x;
   const width = align === 'left' ? INNER.textW : CARD.w;
-  const placed = {
-    family: 'Newsreader',
+  const runStyle = (size: number) => ({
     font: SERIF,
+    size,
+    weight: EXTRABOLD,
+    color: ink('title-color'),
+  });
+  const textStyle = (size: number): TextStyle => ({
+    family: 'Newsreader',
+    size,
+    lineHeight: TITLE.lineHeight,
     x,
     width,
     align,
-    weight: EXTRABOLD,
     tracking: TITLE_TRACKING,
-  } as const;
-  return [
-    plainText('chapeu', KICKER, {
-      ...placed,
-      capTop,
-      size: RULING.kickerSize,
-      color: ink('title-color'),
-    }),
-    plainText('titulo', `INFORMATIVO  ${court.toUpperCase()}`.trim(), {
-      ...placed,
-      capTop: capTop + RULING.title,
-      size: RULING.titleSize,
-      color: ink('title-color'),
-    }),
-  ];
+  });
+  const [first, ...rest] = written;
+  const kicker = rest.length > 0 && first !== undefined ? [first] : [];
+  const main = rest.length > 0 ? rest : [...written];
+  const sections: Section[] = [];
+  if (kicker.length > 0) {
+    const runs = runsOfLines(kicker, runStyle(TITLE.kickerSize)).map(upper);
+    sections.push(textSection(context, 'chapeu', runs, kicker, textStyle(TITLE.kickerSize), 0));
+  }
+  const runs = runsOfLines(main, runStyle(TITLE.size)).map(upper);
+  sections.push(
+    textSection(context, 'titulo', runs, main, textStyle(TITLE.size), TITLE.kickerToTitle),
+  );
+  return sections;
+}
+
+/** The brief's `::titulo` lines, or the reference's two when the brief writes none. */
+function titleLines(context: TemplateContext): RichText[] {
+  return fieldOf(context, 'titulo') ?? DEFAULT_TITLE.map(richLine);
+}
+
+/** The title without its last line's trailing number: the back cover's `INFORMATIVO TRZ`. */
+function withoutNumber(written: readonly RichText[]): RichText[] {
+  const last = written[written.length - 1];
+  if (last === undefined) return [];
+  return [...written.slice(0, -1), richLine(plain(last).replace(/\s+\d[\d.]*$/u, ''))];
 }
 
 /** A band: the accent with its lighter edge on the left (`side`) or on top. */
@@ -419,27 +547,25 @@ function band(
 
 /* -------------------------------------------------------------------------- the ruling -- */
 
-/** A ruling slide's four parts, read from its lines (see the manifest). */
+/** A ruling's parts, each the lines the brief wrote under it, or absent. */
 export interface Ruling {
-  readonly subject: RichText | undefined;
-  readonly question: RichText | undefined;
-  readonly answer: readonly RichText[];
-  readonly source: RichText | undefined;
+  readonly subject: readonly RichText[] | undefined;
+  readonly question: readonly RichText[] | undefined;
+  readonly answer: readonly RichText[] | undefined;
+  readonly source: readonly RichText[] | undefined;
 }
 
-/**
- * The first line is the subject, the second the question; with four lines or more the last is
- * the source, and every line between is a paragraph of the answer.
- */
-export function rulingOf(written: readonly RichText[]): Ruling {
-  const [subject, question, ...rest] = written;
-  const source = rest.length >= 2 ? rest[rest.length - 1] : undefined;
-  const answer = source === undefined ? rest : rest.slice(0, -1);
-  return { subject, question, answer, source };
+export function rulingOf(context: TemplateContext): Ruling {
+  return {
+    subject: fieldOf(context, 'tema'),
+    question: fieldOf(context, 'pergunta'),
+    answer: fieldOf(context, 'resposta'),
+    source: fieldOf(context, 'fonte'),
+  };
 }
 
 function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) => number): Sheet {
-  const parts = rulingOf(slideLines(context));
+  const parts = rulingOf(context);
   const limit = number('card-max-height') - CARD.tabs;
   const questionSize = number('question-size');
   const answerSize = number('answer-size');
@@ -464,6 +590,10 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
   return laid;
 }
 
+function present(written: readonly RichText[] | undefined): written is readonly RichText[] {
+  return written !== undefined && written.length > 0;
+}
+
 function layRuling(
   context: TemplateContext,
   ink: Ink,
@@ -471,97 +601,108 @@ function layRuling(
   questionSize: number,
   answerSize: number,
 ): Sheet {
-  const children: NodeDraft[] = [...title(ink, court(context), RULING.kicker, 'left')];
+  const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
 
-  children.push(...band(ink, 'tema', RULING.band, RULING.bandH, 'side'));
-  if (parts.subject !== undefined) {
-    const runs = runsOf(parts.subject, {
+  if (present(parts.subject)) {
+    const runs = runsOfLines(parts.subject, {
       font: SANS,
       size: RULING.bandSize,
       weight: SEMIBOLD,
       color: ink('on-accent'),
     });
-    children.push(
-      richText('tema-texto', runs, {
+    const inner = textSection(
+      context,
+      'tema-texto',
+      runs,
+      parts.subject,
+      {
         family: 'Roboto',
-        x: INNER.textX,
-        capTop: RULING.band + (RULING.bandH - RULING.bandSize * METRICS.Roboto.cap) / 2,
         size: RULING.bandSize,
+        lineHeight: RULING.bandLineHeight,
+        x: INNER.textX,
         width: INNER.textW,
-      }),
+      },
+      0,
     );
+    sections.push(bandSection(ink, 'tema', inner, RULING.bandPadding, 'side', RULING.band));
   }
 
-  let y = RULING.band + RULING.bandH + RULING.question;
-  if (parts.question !== undefined) {
-    const runs = runsOf(
+  if (present(parts.question)) {
+    const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink('ink') },
       { bold: MEDIUM },
     ).map((item) => italic(item, ink('highlight-color')));
-    const node = richText('pergunta', runs, {
-      family: 'CircularXX',
-      x: INNER.textX,
-      capTop: y,
-      size: questionSize,
-      width: INNER.questionW,
-      lineHeight: RULING.questionLineHeight,
-    });
-    children.push(node);
-    const count = measuredLines(context, node, [parts.question], questionSize, INNER.questionW);
-    y += (count - 1) * questionSize * RULING.questionLineHeight + questionSize * 0.709;
-  }
-
-  y += RULING.answerGap;
-  const answerTop = y;
-  let answerHeight = RULING.answerTop + RULING.answerBottom;
-  let answerNode: TextDraft | undefined;
-  if (parts.answer.length > 0) {
-    const runs = parts.answer.flatMap((paragraph, index) => [
-      ...(index === 0 ? [] : [lineBreak()]),
-      ...runsOf(
-        paragraph,
-        { font: SANS, size: answerSize, weight: LIGHT, color: ink('on-accent') },
-        { bold: MEDIUM },
+    sections.push(
+      textSection(
+        context,
+        'pergunta',
+        runs,
+        parts.question,
+        {
+          family: 'CircularXX',
+          size: questionSize,
+          lineHeight: RULING.questionLineHeight,
+          x: INNER.textX,
+          width: INNER.questionW,
+        },
+        RULING.question,
       ),
-    ]);
-    answerNode = richText('resposta', runs, {
-      family: 'Roboto',
-      x: INNER.textX,
-      capTop: answerTop + RULING.answerTop,
-      size: answerSize,
-      width: INNER.textW,
-      lineHeight: RULING.answerLineHeight,
-    });
-    const count = measuredLines(context, answerNode, parts.answer, answerSize, INNER.textW);
-    answerHeight += (count - 1) * answerSize * RULING.answerLineHeight + answerSize * 0.711;
+    );
   }
-  children.push(...band(ink, 'bloco-resposta', answerTop, answerHeight, 'top'));
-  if (answerNode !== undefined) children.push(answerNode);
-  y = answerTop + answerHeight;
 
-  if (parts.source !== undefined) {
-    y += RULING.source;
-    const runs = runsOf(parts.source, {
+  if (present(parts.answer)) {
+    const runs = runsOfLines(
+      parts.answer,
+      { font: SANS, size: answerSize, weight: LIGHT, color: ink('on-accent') },
+      { bold: MEDIUM },
+    );
+    const inner = textSection(
+      context,
+      'resposta',
+      runs,
+      parts.answer,
+      {
+        family: 'Roboto',
+        size: answerSize,
+        lineHeight: RULING.answerLineHeight,
+        x: INNER.textX,
+        width: INNER.textW,
+      },
+      0,
+    );
+    sections.push(
+      bandSection(ink, 'bloco-resposta', inner, RULING.answerPadding, 'top', RULING.answer),
+    );
+  }
+
+  if (present(parts.source)) {
+    const runs = runsOfLines(parts.source, {
       font: SANS,
       size: RULING.sourceSize,
       weight: LIGHT,
       color: ink('ink'),
     });
-    const node = richText('fonte', runs, {
-      family: 'Roboto',
-      x: INNER.textX,
-      capTop: y,
-      size: RULING.sourceSize,
-      width: INNER.textW,
-      lineHeight: RULING.sourceLineHeight,
-    });
-    children.push(node);
-    const count = measuredLines(context, node, [parts.source], RULING.sourceSize, INNER.textW);
-    y += (count - 1) * RULING.sourceSize * RULING.sourceLineHeight + RULING.sourceSize * 0.711;
+    sections.push(
+      textSection(
+        context,
+        'fonte',
+        runs,
+        parts.source,
+        {
+          family: 'Roboto',
+          size: RULING.sourceSize,
+          lineHeight: RULING.sourceLineHeight,
+          x: INNER.textX,
+          width: INNER.textW,
+        },
+        RULING.source,
+      ),
+    );
   }
 
-  return { height: Math.round(y + RULING.bottom), arrow: ARROW_ON, children };
+  const { nodes, bottom } = stack(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes };
 }
 
 /** The question is italic throughout; its highlights take the highlight colour. */
@@ -574,44 +715,73 @@ function italic(item: TextRun, highlight: string): TextRun {
 /* ---------------------------------------------------------------------- the back cover -- */
 
 function backCover(context: TemplateContext, ink: Ink): Sheet {
-  const [callLine, closingLine] = slideLines(context);
-  const call = callLine === undefined ? DEFAULT_CALL : plain(callLine);
-  const closing = closingLine === undefined ? DEFAULT_CLOSING : plain(closingLine);
+  const call = fieldOf(context, 'chamada') ?? [richLine(DEFAULT_CALL)];
+  const closing = fieldOf(context, 'fecho') ?? [richLine(DEFAULT_CLOSING)];
+  const sections: Section[] = [
+    ...titleSections(context, ink, withoutNumber(titleLines(context)), 'center'),
+  ];
 
-  const children: NodeDraft[] = [
-    ...title(ink, court(context).replace(/\s+\d[\d.]*$/u, ''), BACK.kicker, 'center'),
-    ...band(ink, 'chamada', BACK.band, BACK.bandH, 'side'),
-    plainText('chamada-texto', call, {
-      family: 'Roboto',
+  if (call.length > 0) {
+    const runs = runsOfLines(call, {
       font: SANS,
-      x: INNER.bandX + INNER.edge,
-      width: INNER.bandW - INNER.edge,
-      align: 'center',
-      capTop: BACK.band + 23,
       size: BACK.bandSize,
       weight: SEMIBOLD,
-      lineHeight: BACK.bandLineHeight,
       color: ink('on-accent'),
-    }),
-    plainText('fecho', closing, {
-      family: 'Newsreader',
+    });
+    const inner = textSection(
+      context,
+      'chamada-texto',
+      runs,
+      call,
+      {
+        family: 'Roboto',
+        size: BACK.bandSize,
+        lineHeight: BACK.bandLineHeight,
+        x: INNER.bandX + INNER.edge,
+        width: INNER.bandW - INNER.edge,
+        align: 'center',
+      },
+      0,
+    );
+    sections.push(bandSection(ink, 'chamada', inner, BACK.bandPadding, 'side', BACK.band));
+  }
+
+  if (closing.length > 0) {
+    const runs = runsOfLines(closing, {
       font: SERIF,
-      x: CARD.x,
-      width: CARD.w,
-      align: 'center',
-      capTop: BACK.closing,
       size: BACK.closingSize,
       weight: EXTRABOLD,
       color: ink('title-color'),
-    }),
-    ...heart(ink),
-    ...icons(ink),
-  ];
-  return { height: BACK.sheet, arrow: ARROW_DOWN, children };
+    });
+    sections.push(
+      textSection(
+        context,
+        'fecho',
+        runs,
+        closing,
+        {
+          family: 'Newsreader',
+          size: BACK.closingSize,
+          lineHeight: TITLE.lineHeight,
+          x: CARD.x,
+          width: CARD.w,
+          align: 'center',
+          tracking: TITLE_TRACKING,
+        },
+        BACK.closing,
+      ),
+    );
+  }
+
+  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
+  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
+
+  const { nodes, bottom } = stack(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
 }
 
-function heart(ink: Ink): readonly NodeDraft[] {
-  const { x, y, d } = BACK.heart;
+function heart(ink: Ink, y: number): readonly NodeDraft[] {
+  const { x, d } = BACK.heart;
   const shape =
     'M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46' +
     'C135 46 150 58 150 78C150 112 96 150 96 150Z';
@@ -634,8 +804,8 @@ function heart(ink: Ink): readonly NodeDraft[] {
 }
 
 /** Comment, share and save, outlined in the ink. */
-function icons(ink: Ink): readonly NodeDraft[] {
-  const { x, y } = BACK.icons;
+function icons(ink: Ink, y: number): readonly NodeDraft[] {
+  const { x } = BACK.icons;
   const stroke = { paint: solid(ink('ink')), width: 4, align: 'center' as const };
   return [
     vector({
@@ -673,17 +843,19 @@ function icons(ink: Ink): readonly NodeDraft[] {
 
 /* -------------------------------------------------------------------------- the shared -- */
 
-/** The brief's `informativo`, the court and the bulletin's number: `TRZ 412`. */
-function court(context: TemplateContext): string {
-  const value = context.slots['informativo']?.value;
-  return value?.kind === 'rich-text' ? plain(value.text).trim() : '';
+/**
+ * A field's lines, blank ones dropped: `undefined` when the brief does not write it, and an
+ * empty list when it writes it with no lines, which hides a section that has a default.
+ */
+function fieldOf(context: TemplateContext, name: string): RichText[] | undefined {
+  const value = context.slots[name]?.value;
+  if (value?.kind !== 'rich-text') return undefined;
+  return lines(value.text).filter((line) => plain(line).trim() !== '');
 }
 
-/** This slide's written lines as rich text, the empty ones dropped. */
-function slideLines(context: TemplateContext): RichText[] {
-  const value = context.slots['lamina']?.value;
-  if (value?.kind !== 'rich-text') return [];
-  return lines(value.text).filter((line) => plain(line).trim() !== '');
+/** Plain words as one line of rich text. */
+function richLine(words: string): RichText {
+  return [{ kind: 'text', value: words, range: { start: 0, end: words.length } }];
 }
 
 interface Box {

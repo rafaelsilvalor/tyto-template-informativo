@@ -32,24 +32,36 @@ template: informativo
 formats: [grid]
 ---
 
-::informativo
-  TRZ 412
+::titulo
+  Destaques do
+  Informativo TRZ 412
 
 ::lamina
+::tema
   Direito Previdenciário
+::pergunta
   The question, in italic, with a **highlight**?
+::resposta
   **No.** The answer, one line per paragraph.
+::fonte
   The source: the case, the judge, the date.
 
 ::lamina {contracapa}
 ```
 
-- `::informativo` is the court and the bulletin's number. The title reads `INFORMATIVO TRZ 412`;
-  the back cover drops the number.
-- A ruling's lines are the subject (the band), the question, then the answer, one line per
-  paragraph; with four lines or more the last is the source.
-- `::lamina {contracapa}` is the back cover. Empty, it says the reference's words; a first line
-  replaces the call to like the post, a second replaces "Bons estudos!".
+**Every section is a field of its own, and every field is optional.** A slide's fields are
+written under its `::lamina`, each with any number of lines; a field not written is not drawn,
+and the sections under it close up, each keeping the gap the reference sets above it.
+
+- `::titulo`, once for the whole carousel. With two lines or more the first is the kicker,
+  smaller; one line is the title alone; it is set in capitals. Not written, it is
+  `Destaques do` / `Informativo`; written with no lines, no title is drawn. The back cover drops
+  a trailing number from its last line (`INFORMATIVO TRZ`).
+- A ruling: `::tema` (the band), `::pergunta` (italic, `**x**` in the highlight colour),
+  `::resposta` (the block, one line per paragraph, `**x**` bold) and `::fonte`.
+- `::lamina {contracapa}` is the back cover. `::chamada` and `::fecho` replace the call to like
+  the post and "Bons estudos!"; not written, they say the reference's words; written with no
+  lines, they are not drawn. The heart and the icons are always drawn.
 - `fundo: ./arte.png` in the frontmatter draws that picture under the card instead of the
   configured background.
 
@@ -118,6 +130,10 @@ The tests, all without Tyto:
   `@tyto/template-kit/testing` (Tyto ADR 0152), against the HTML in `tests/__snapshots__/`.
 - `tests/values.test.ts`: each declared default pinned to the one the code falls back to, and a
   colour set in a test found in the HTML.
+- `tests/faces.test.ts`: the faces the manifest declares are the faces the example sets, style
+  included. A face left out is measured as nothing in the plugin's process, and the card is
+  laid out from an estimate: the question's upright faces opened a 104 px gap under a
+  three-line question where a two-line one had 44.
 - `tests/plugin.test.ts`: the built `dist/index.js`, loaded through `@tyto/plugin-api/testing`
   (Tyto ADR 0150), drawing `informativo` across the isolation protocol.
 

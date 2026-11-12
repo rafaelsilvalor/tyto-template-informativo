@@ -8,7 +8,7 @@ import { build } from '../src/template.js';
 
 /**
  * The example brief, compiled the way Tyto compiles it (Tyto ADR 0152), against the HTML the
- * template produced last time it was reviewed: two rulings and the back cover.
+ * template produced last time it was reviewed: three rulings and the back cover.
  *
  * Nothing is measured and every face is a placeholder, so the snapshot moves when the
  * composition does and not when a machine has another font. No brand kit either: the logo and
@@ -23,7 +23,7 @@ const template = defineTemplate(manifest.value, build);
 const formats = formatCatalogue({ grid: { w: 1080, h: 1350, kind: 'grid' } });
 
 describe('the example informativo', () => {
-  it('compiles to three grid frames, the HTML the template drew last time', async () => {
+  it('compiles to four grid frames, the HTML the template drew last time', async () => {
     const result = await compileTemplate({
       brief: read('../templates/informativo/examples/informativo.brief'),
       template,
@@ -31,7 +31,7 @@ describe('the example informativo', () => {
     });
     if (!result.ok) throw new Error(result.error.map((item) => item.message).join('\n'));
 
-    expect(result.value.frames).toHaveLength(3);
+    expect(result.value.frames).toHaveLength(4);
     for (const [index, frame] of result.value.frames.entries()) {
       await expect(frame.html).toMatchFileSnapshot(`./__snapshots__/informativo-${index + 1}.html`);
     }

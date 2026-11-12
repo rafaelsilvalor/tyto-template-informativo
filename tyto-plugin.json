@@ -1,6 +1,6 @@
 {
   "name": "informativo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engine": ">=0.14",
   "contributes": ["template-pack"],
   "permissions": ["font:CircularXX", "font:Newsreader", "font:Roboto"]
