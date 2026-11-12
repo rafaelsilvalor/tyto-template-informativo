@@ -1,0 +1,56 @@
+name: informativo
+version: 0.1.0
+# The ocre brand of the private brand kit (Tyto ADR 0063): its logo and signature. Without
+# that brand in the installed kit, the logo and the signature are placeholders.
+brand: ocre
+description: A court bulletin carousel at 1080×1350 — one ruling per slide on a paper card that grows with its words, and a back cover.
+# Every face the slides set, so the plugin's process can measure them (Tyto ADR 0048).
+# Newsreader and Roboto are Google families, fetched once when the machine lacks them (Tyto ADR
+# 0120). CircularXX is licensed: it crosses only under `font:CircularXX`, approved at install.
+faces:
+  - { family: Newsreader, weight: 800 }
+  - { family: Roboto, weight: 300 }
+  - { family: Roboto, weight: 500 }
+  - { family: Roboto, weight: 600 }
+  - { family: CircularXX, weight: 400 }
+  - { family: CircularXX, weight: 500 }
+fonts:
+  CircularXX: { alternatives: [Inter, Manrope, DM Sans] }
+formats: [grid]
+slots:
+  # The bulletin, the court and its number: `TRZ 412`. The title reads `INFORMATIVO TRZ 412`; the
+  # back cover drops the number.
+  informativo: { type: rich-text, required: true, max: 40 }
+  # The picture under the card, 1080 × 1350, full bleed. In the frontmatter: `fundo: ./arte.png`.
+  # Without it, the configuration's `background`.
+  fundo: { type: image }
+  # One slide each, in order. A ruling's lines: the subject (the band), the question (italic,
+  # `**x**` a highlight), then the answer, one line per paragraph (`**x**` in bold); with four
+  # lines or more the last is the source. The back cover is `::lamina {contracapa}`: empty, or a
+  # first line that replaces the call to like the post and a second that replaces "Bons estudos!".
+  lamina: { type: rich-text, repeat: true, min: 1, max: 10 }
+adjustments:
+  contracapa: { type: flag, applies: [lamina] }
+# What a configuration may change (Tyto ADR 0153). Each default is the reference art's;
+# `tests/values.test.ts` pins every default to the code's fallback.
+values:
+  # The picture under the card for every brief of a configuration; a brief's `fundo` wins.
+  background: { type: image, default: assets/fundo.png }
+  # The paper laid over the whole slide in multiply: its grain darkens everything under it.
+  paper-texture: { type: image, default: assets/papel.png }
+  card: { type: color, default: '#ebeae9' }
+  back-tab: { type: color, default: '#d6d5d1' }
+  accent: { type: color, default: '#b58230' }
+  accent-edge: { type: color, default: '#d8ab63' }
+  title-color: { type: color, default: '#b27c37' }
+  ink: { type: color, default: '#4d4d4d' }
+  on-accent: { type: color, default: '#ebeae9' }
+  highlight-color: { type: color, default: '#ae7d2e' }
+  logo: { type: color, default: '#ebeae9' }
+  # The tallest the card may be, its tabs included: 135 px from each edge.
+  card-max-height: { type: length, default: 1080, min: 600, max: 1350 }
+  # Past that height the question and the answer shrink together, down to these floors.
+  question-size: { type: length, default: 40, min: 28, max: 56 }
+  question-floor: { type: length, default: 28, min: 20, max: 40 }
+  answer-size: { type: length, default: 32, min: 22, max: 44 }
+  answer-floor: { type: length, default: 22, min: 16, max: 32 }

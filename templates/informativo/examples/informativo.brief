@@ -1,0 +1,22 @@
+---
+template: informativo
+formats: [grid]
+---
+// Two rulings and the back cover, in invented copy.
+
+::informativo
+  TRZ 412
+
+::lamina
+  Direito Administrativo
+  Uma autarquia municipal pode cobrar taxa pela emissão de **certidão de regularidade**?
+  **Não.** Segundo o entendimento firmado pelo tribunal no **Tema 9.999**, a certidão é serviço público de interesse do próprio cidadão e a Constituição garante sua emissão gratuita.
+  Recurso de exemplo 1.234/ZZ, rel. Min. Fulana de Tal, Primeira Turma, julgado em 01/02/2026.
+
+::lamina
+  Direito Civil
+  O prazo para pedir a revisão de um contrato de locação começa a contar da assinatura ou do primeiro reajuste?
+  **Do primeiro reajuste.** O tribunal entendeu que antes dele não existe o desequilíbrio que justifica o pedido.
+  Recurso de exemplo 5.678/ZZ, rel. Min. Beltrano de Tal, Terceira Turma, julgado em 03/04/2026.
+
+::lamina {contracapa}
