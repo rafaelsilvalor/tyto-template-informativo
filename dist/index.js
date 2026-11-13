@@ -24535,7 +24535,12 @@ var NUMBER_DEFAULTS = {
   "question-size": 40,
   "question-floor": 28,
   /** The most the question may grow into the room its lines leave, never gaining a line. */
+  /** The least the question may take to fill its box (`unfilledOf`), so it never gets small. */
+  "question-min": 36,
   "question-ceiling": 48,
+  /** The least and the most the answer may take to fill its box, the same way. */
+  "answer-min": 29,
+  "answer-ceiling": 36,
   /** The answer's size and its floor. */
   "answer-size": 32,
   "answer-floor": 22,
@@ -24640,6 +24645,7 @@ var BACK = {
   iconsHeight: 48,
   bottom: 80
 };
+var SIZE_DRIFT_WEIGHT = 0.1;
 function roleOf(context) {
   return context.adjustments["contracapa"] === true ? "contracapa" : "ruling";
 }
@@ -24841,35 +24847,53 @@ function ruling(context, ink, number4) {
       )
     )
   );
-  const linesAt = (size) => {
-    const node2 = layRuling(
-      context,
-      ink,
-      parts,
-      { question: size, answer: answerSize },
-      /* @__PURE__ */ new Map()
-    ).texts?.get("pergunta");
-    return node2 === void 0 ? void 0 : context.measure(node2)?.lines;
-  };
-  const baseLines = linesAt(questionSize);
+  const smallest = Math.min(questionSize, number4("question-min"));
+  const largest = Math.max(questionSize, number4("question-ceiling"));
+  const candidates = [];
+  for (let size = smallest; size <= largest + 1e-9; size += 0.5) candidates.push(size);
+  candidates.sort((a, b) => Math.abs(a - questionSize) - Math.abs(b - questionSize));
   let grown = questionSize;
-  if (baseLines !== void 0) {
-    const ceiling = Math.max(questionSize, number4("question-ceiling"));
-    for (let size = ceiling; size > questionSize; size -= 0.5) {
-      if ((linesAt(size) ?? Infinity) <= baseLines) {
-        grown = size;
-        break;
-      }
+  let bestScore = Infinity;
+  for (const size of candidates) {
+    const sheet = layRuling(context, ink, parts, { question: size, answer: answerSize }, /* @__PURE__ */ new Map());
+    const node2 = sheet.texts?.get("pergunta");
+    const unfilled = node2 === void 0 ? void 0 : unfilledOf(context, node2);
+    if (unfilled === void 0) break;
+    if (sheet.height > limit) continue;
+    const drift = (size - questionSize) / questionSize;
+    const score = unfilled + SIZE_DRIFT_WEIGHT * drift * drift;
+    if (score < bestScore - 1e-9) {
+      bestScore = score;
+      grown = size;
     }
   }
-  let sizes = { question: grown, answer: answerSize };
+  const answerSmallest = Math.min(answerSize, number4("answer-min"));
+  const answerLargest = Math.max(answerSize, number4("answer-ceiling"));
+  const answerCandidates = [];
+  for (let size = answerSmallest; size <= answerLargest + 1e-9; size += 0.5) {
+    answerCandidates.push(size);
+  }
+  answerCandidates.sort((a, b) => Math.abs(a - answerSize) - Math.abs(b - answerSize));
+  let answerGrown = answerSize;
+  let answerBest = Infinity;
+  for (const size of answerCandidates) {
+    const sheet = layRuling(context, ink, parts, { question: grown, answer: size }, /* @__PURE__ */ new Map());
+    const node2 = sheet.texts?.get("resposta");
+    const unfilled = node2 === void 0 ? void 0 : unfilledOf(context, node2);
+    if (unfilled === void 0) break;
+    if (sheet.height > limit) continue;
+    const drift = (size - answerSize) / answerSize;
+    const score = unfilled + SIZE_DRIFT_WEIGHT * drift * drift;
+    if (score < answerBest - 1e-9) {
+      answerBest = score;
+      answerGrown = size;
+    }
+  }
+  let sizes = { question: grown, answer: answerGrown };
   let laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep + grown - questionSize; step += 1) {
+  for (let step = 1; laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize); step += 1) {
     const question = Math.max(number4("question-floor"), grown - step);
-    const answer = Math.max(
-      number4("answer-floor"),
-      answerSize * Math.min(1, question / questionSize)
-    );
+    const answer = Math.max(number4("answer-floor"), answerGrown * Math.min(1, question / grown));
     sizes = { question, answer };
     laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
   }
@@ -24907,7 +24931,6 @@ function present(written) {
 }
 function layRuling(context, ink, parts, sizes, tunings) {
   const questionSize = sizes.question;
-  const normalQuestion = numberValue(context, "question-size", NUMBER_DEFAULTS["question-size"]);
   const answerSize = sizes.answer;
   const texts = /* @__PURE__ */ new Map();
   const sections = [...titleSections(context, ink, titleLines(context), "left")];
@@ -24948,9 +24971,7 @@ function layRuling(context, ink, parts, sizes, tunings) {
       {
         family: "CircularXX",
         size: questionSize,
-        // The normal size's pitch, kept when the question grows to fill its box and shrunk
-        // with it below its size: a larger letter never makes the card taller.
-        lineHeight: RULING.questionLineHeight * Math.min(questionSize, normalQuestion) / questionSize,
+        lineHeight: RULING.questionLineHeight,
         x: INNER.textX,
         width: INNER.questionW
       },
@@ -25133,6 +25154,26 @@ function icons(ink, y) {
       transform: { x: x + 130, y: y + 4 }
     })
   ];
+}
+function unfilledOf(context, node2) {
+  const box = node2.box?.w;
+  const measured = context.measure(node2);
+  if (box === void 0 || measured === void 0) return void 0;
+  const paragraphs = [[[]]];
+  for (const run3 of measured.runs) {
+    const lines3 = paragraphs.at(-1);
+    if (run3.kind === "break") lines3.push([]);
+    else lines3.at(-1).push(run3);
+  }
+  const lines2 = paragraphs[0].filter((line) => line.length > 0);
+  const widthOf = (line) => {
+    const [head, ...tail] = line;
+    return context.measure({ ...node2, box: {}, runs: [head, ...tail] })?.width ?? box;
+  };
+  const shares = lines2.map((line) => Math.max(0, box - widthOf(line)) / box);
+  if (shares.length === 1) return shares[0] * shares[0] / 4;
+  const body = shares.slice(0, -1);
+  return body.reduce((sum, share) => sum + share * share, 0) / body.length;
 }
 function fieldOf(context, name) {
   const value = context.slots[name]?.value;

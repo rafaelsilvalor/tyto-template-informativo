@@ -71,10 +71,12 @@ after it, so no line ends on `a`, `e`, `o`, `é`, `à` or `de` (the banner keeps
 same way). The question, the answer and the source go through the kit's `settle` (Tyto ADR
 0167), as `voce-conhece`'s paragraphs do: none ends on a word of its own, cleared by a word
 moved down or by letter spacing within `orphan-tracking`, never by a smaller size; a word
-nothing clears is reported as `W_TEMPLATE_ORPHAN`. The question also grows to fill its box (up to x =
-913 px): to the largest size up to `question-ceiling` (48 px against its 40) at which it
-takes no more lines, its lines kept the normal size's 60 px apart, so the card never grows
-for it.
+nothing clears is reported as `W_TEMPLATE_ORPHAN`. **The question and the answer
+take the size that fills their box best**, case by case: every size from `question-min` to
+`question-ceiling` (36–48 px, normally 40) and `answer-min` to `answer-ceiling` (29–36 px,
+normally 32) is laid out, its lines measured, and scored by the room they leave on the right;
+the card must still fit, and near-ties keep the normal size. A size may be larger or smaller
+than normal, and the text may gain or lose a line for it.
 
 **The card** is as tall as what it holds, tabs included, and centred on the slide. It never grows
 past `card-max-height` (1080 px, 135 px from each edge); past that the question and the answer
@@ -108,8 +110,8 @@ on the machine crosses only under its permission. Without it the render warns
 
 `templates/informativo/manifest.yaml` declares its `values` (Tyto ADR 0153): the `background`
 and the `paper-texture` pictures, the card's, tabs', bands', title's, ink's and highlight's
-colours, the card's maximum height, the question's and answer's sizes and floors, the
-question's `question-ceiling`, and `orphan-tracking`. Changing
+colours, the card's maximum height, the question's and answer's sizes and floors, their
+`*-min` and `*-ceiling`, and `orphan-tracking`. Changing
 one never changes which pieces appear or their order (Tyto ADR 0151). The real background is a
 configuration's `background: { value: <path> }`.
 

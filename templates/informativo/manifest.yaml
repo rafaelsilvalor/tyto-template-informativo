@@ -66,11 +66,17 @@ values:
   # Past that height the question and the answer shrink together, down to these floors.
   question-size: { type: length, default: 40, min: 28, max: 56 }
   question-floor: { type: length, default: 28, min: 20, max: 40 }
-  # The question grows up to this size to fill its box, as long as it takes no more lines than
-  # at `question-size`; its line pitch stays the normal size's, so the card never grows for it.
+  # The least and the most the question may take so the right of its box is as full as it
+  # can be: each size between them is laid out at its own pitch and scored by the room its
+  # lines leave; the card must still fit, and near-ties keep `question-size`.
+  question-min: { type: length, default: 36, min: 28, max: 40 }
   question-ceiling: { type: length, default: 48, min: 40, max: 64 }
   answer-size: { type: length, default: 32, min: 22, max: 44 }
   answer-floor: { type: length, default: 22, min: 16, max: 32 }
+  # The least and the most the answer may take so the right of its block is as full as it can
+  # be, chosen the same way once the question's size is set.
+  answer-min: { type: length, default: 29, min: 22, max: 32 }
+  answer-ceiling: { type: length, default: 36, min: 32, max: 48 }
   # The most letter spacing, in em, the question, the answer or the source may take or give so
   # that none ends on a word of its own (Tyto ADR 0167); their size never moves for it.
   orphan-tracking: { type: number, default: 0.01, min: 0, max: 0.05 }

@@ -113,18 +113,56 @@ describe('the question', () => {
     expect(orphans).toEqual([]);
   });
 
-  it('grows into the room its lines leave, up to question-ceiling, never gaining a line', async () => {
-    // At 0.5 em a character, 30 characters take 720 px at 48 px: one line, up to the ceiling.
+  it('takes the size that fills its box best, larger or smaller, at its own pitch', async () => {
+    // At 0.5 em a character, 30 characters fill 762 px only at 50.8 px: one line, growing.
     const short = await question('Pode o juiz rever isso depois?');
-    // 36 characters fit 762 px at 42 px (756) and not at 42.5 (765): it stops at 42.
+    // 36 characters fit 762 px at 42 px (756) and not at 42.5 (765): it stops at 42 or just under.
     const longer = await question('Pode o juiz rever a decisão já dada?');
+    // 39 characters take 780 px at 40 px, two lines with one word left over; at 39 px (760.5)
+    // one full line: the size goes down to fill the box.
+    const over = await question('Pode o juiz rever a decisão antes dela?');
 
     const sizeOf = (node: TextNode) => node.runs.find((run) => run.kind === 'text')?.size;
     expect(laidLines(short.node)).toHaveLength(1);
-    expect(sizeOf(short.node)).toBe(48);
-    // Grown, its lines stay the normal size's 60 px apart, so the card is no taller.
-    expect(short.node.lineHeight * 48).toBeCloseTo(60);
+    // It grows well past 40 px toward the ceiling; how far is the fill weighed against drift.
+    expect(sizeOf(short.node)).toBeGreaterThan(44);
+    expect(sizeOf(short.node)).toBeLessThanOrEqual(48);
+    // The pitch follows the letter: 1.5 times its size.
+    expect(short.node.lineHeight).toBe(1.5);
     expect(laidLines(longer.node)).toHaveLength(1);
-    expect(sizeOf(longer.node)).toBe(42);
+    expect(sizeOf(longer.node)).toBeGreaterThanOrEqual(41);
+    expect(sizeOf(longer.node)).toBeLessThanOrEqual(42);
+    expect(laidLines(over.node)).toHaveLength(1);
+    expect(sizeOf(over.node)).toBe(39);
+  });
+
+  it('never goes under question-min to fill its box', async () => {
+    // 45 characters take 762 px only at 33.8 px: under the 36 px minimum, it stays on two lines.
+    const { node } = await question('Pode o juiz rever a decisão antes do recurso?');
+    const size = node.runs.find((run) => run.kind === 'text')?.size ?? 0;
+    expect(size).toBeGreaterThanOrEqual(36);
+  });
+});
+
+describe('the answer', () => {
+  it('takes the size that fills its block best, the same way', async () => {
+    // At 0.5 em a character, 50 characters take 800 px at 32 px, over the 790 px box; at 31.5 px
+    // (787.5) one full line.
+    const result = await compileTemplate({
+      brief:
+        '---\ntemplate: informativo\nformats: [grid]\n---\n::lamina\n::resposta\n' +
+        '  Sim, desde que o juiz reveja a decisão no prazo...\n',
+      template,
+      formats,
+      faces,
+    });
+    if (!result.ok) throw new Error(result.error.map((item) => item.message).join('\n'));
+    const frame = result.value.scene.artworks[0]?.frames[0];
+    if (frame === undefined) throw new Error('no frame');
+    const found = nodes(frame).find((node) => node.name === 'resposta');
+    if (found?.kind !== 'text') throw new Error('no answer');
+
+    expect(laidLines(found)).toHaveLength(1);
+    expect(found.runs.find((run) => run.kind === 'text')?.size).toBe(31.5);
   });
 });

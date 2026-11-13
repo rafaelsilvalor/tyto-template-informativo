@@ -128,7 +128,12 @@ export const NUMBER_DEFAULTS = {
   'question-size': 40,
   'question-floor': 28,
   /** The most the question may grow into the room its lines leave, never gaining a line. */
+  /** The least the question may take to fill its box (`unfilledOf`), so it never gets small. */
+  'question-min': 36,
   'question-ceiling': 48,
+  /** The least and the most the answer may take to fill its box, the same way. */
+  'answer-min': 29,
+  'answer-ceiling': 36,
   /** The answer's size and its floor. */
   'answer-size': 32,
   'answer-floor': 22,
@@ -294,6 +299,13 @@ const BACK = {
   iconsHeight: 48,
   bottom: 80,
 } as const;
+
+/**
+ * How much a size's drift from `question-size` weighs against the room its lines leave: a
+ * size 10 % off costs a tenth as much as lines each 10 % empty, so the fill decides and the
+ * normal size only breaks near-ties.
+ */
+const SIZE_DRIFT_WEIGHT = 0.1;
 
 /* --------------------------------------------------------------------------- the build -- */
 
@@ -642,41 +654,68 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
       ),
     ),
   );
-  // The question fills its box (Rafael, 2026-11-12, with a Photoshop reference: "use as much of
-  // the space as possible"): the largest size up to `question-ceiling`, half a pixel at a time,
-  // at which it takes no more lines than at its size. Its line pitch stays the normal size's
-  // (`layRuling`), so growing never makes the card taller. Measured only; with nothing to
-  // measure it keeps its size.
-  const linesAt = (size: number): number | undefined => {
-    const node = layRuling(
-      context,
-      ink,
-      parts,
-      { question: size, answer: answerSize },
-      new Map(),
-    ).texts?.get('pergunta');
-    return node === undefined ? undefined : context.measure(node)?.lines;
-  };
-  const baseLines = linesAt(questionSize);
+  // The question fills the right of its box as far as it can (Rafael, 2026-11-12: "the right side
+  // as full as possible, even with a smaller letter and fewer lines, but with a limit"). Every
+  // size from `question-min` to `question-ceiling`, half a pixel apart, is laid out with its
+  // pitch, and scored by the room its lines leave (`unfilledOf`) plus a little for drifting from
+  // `question-size`, which only settles near-ties; the card must still fit. Measured only: with
+  // nothing to measure the question keeps its size.
+  const smallest = Math.min(questionSize, number('question-min'));
+  const largest = Math.max(questionSize, number('question-ceiling'));
+  const candidates: number[] = [];
+  for (let size = smallest; size <= largest + 1e-9; size += 0.5) candidates.push(size);
+  // Nearest the normal size first, so a tie keeps it.
+  candidates.sort((a, b) => Math.abs(a - questionSize) - Math.abs(b - questionSize));
   let grown = questionSize;
-  if (baseLines !== undefined) {
-    const ceiling = Math.max(questionSize, number('question-ceiling'));
-    for (let size = ceiling; size > questionSize; size -= 0.5) {
-      if ((linesAt(size) ?? Infinity) <= baseLines) {
-        grown = size;
-        break;
-      }
+  let bestScore = Infinity;
+  for (const size of candidates) {
+    const sheet = layRuling(context, ink, parts, { question: size, answer: answerSize }, new Map());
+    const node = sheet.texts?.get('pergunta');
+    const unfilled = node === undefined ? undefined : unfilledOf(context, node);
+    if (unfilled === undefined) break;
+    if (sheet.height > limit) continue;
+    const drift = (size - questionSize) / questionSize;
+    const score = unfilled + SIZE_DRIFT_WEIGHT * drift * drift;
+    if (score < bestScore - 1e-9) {
+      bestScore = score;
+      grown = size;
     }
   }
 
-  let sizes = { question: grown, answer: answerSize };
+  // The answer the same way, with the question's size now fixed (Rafael, 2026-11-12: "the
+  // answer may have the same problem"): from `answer-min` to `answer-ceiling`.
+  const answerSmallest = Math.min(answerSize, number('answer-min'));
+  const answerLargest = Math.max(answerSize, number('answer-ceiling'));
+  const answerCandidates: number[] = [];
+  for (let size = answerSmallest; size <= answerLargest + 1e-9; size += 0.5) {
+    answerCandidates.push(size);
+  }
+  answerCandidates.sort((a, b) => Math.abs(a - answerSize) - Math.abs(b - answerSize));
+  let answerGrown = answerSize;
+  let answerBest = Infinity;
+  for (const size of answerCandidates) {
+    const sheet = layRuling(context, ink, parts, { question: grown, answer: size }, new Map());
+    const node = sheet.texts?.get('resposta');
+    const unfilled = node === undefined ? undefined : unfilledOf(context, node);
+    if (unfilled === undefined) break;
+    if (sheet.height > limit) continue;
+    const drift = (size - answerSize) / answerSize;
+    const score = unfilled + SIZE_DRIFT_WEIGHT * drift * drift;
+    if (score < answerBest - 1e-9) {
+      answerBest = score;
+      answerGrown = size;
+    }
+  }
+
+  let sizes = { question: grown, answer: answerGrown };
   let laid = layRuling(context, ink, parts, sizes, new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep + grown - questionSize; step += 1) {
+  for (
+    let step = 1;
+    laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize);
+    step += 1
+  ) {
     const question = Math.max(number('question-floor'), grown - step);
-    const answer = Math.max(
-      number('answer-floor'),
-      answerSize * Math.min(1, question / questionSize),
-    );
+    const answer = Math.max(number('answer-floor'), answerGrown * Math.min(1, question / grown));
     sizes = { question, answer };
     laid = layRuling(context, ink, parts, sizes, new Map());
   }
@@ -726,7 +765,6 @@ function layRuling(
   tunings: Tunings,
 ): Sheet {
   const questionSize = sizes.question;
-  const normalQuestion = numberValue(context, 'question-size', NUMBER_DEFAULTS['question-size']);
   const answerSize = sizes.answer;
   const texts = new Map<string, TextDraft>();
   const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
@@ -769,10 +807,7 @@ function layRuling(
       {
         family: 'CircularXX',
         size: questionSize,
-        // The normal size's pitch, kept when the question grows to fill its box and shrunk
-        // with it below its size: a larger letter never makes the card taller.
-        lineHeight:
-          (RULING.questionLineHeight * Math.min(questionSize, normalQuestion)) / questionSize,
+        lineHeight: RULING.questionLineHeight,
         x: INNER.textX,
         width: INNER.questionW,
       },
@@ -977,6 +1012,36 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
 }
 
 /* -------------------------------------------------------------------------- the shared -- */
+
+/**
+ * How much of its box a text leaves empty on the right: the mean, over every line but a
+ * paragraph's last, of the line's empty share of the box, squared, so one very short line costs
+ * more than two slightly short ones. A paragraph of one line counts that line at a quarter: it
+ * is its own last line, and a short question should still prefer to fill. `undefined` when
+ * nothing can be measured.
+ */
+function unfilledOf(context: TemplateContext, node: TextDraft): number | undefined {
+  const box = node.box?.w;
+  const measured = context.measure(node);
+  if (box === undefined || measured === undefined) return undefined;
+  const paragraphs: TextRun[][][] = [[[]]];
+  for (const run of measured.runs) {
+    const lines = paragraphs.at(-1)!;
+    if (run.kind === 'break') lines.push([]);
+    else lines.at(-1)!.push(run);
+  }
+  // A break the brief wrote ends a paragraph; the layout's own breaks only end lines. The
+  // measured runs do not tell them apart, so every line but the text's last is scored.
+  const lines = paragraphs[0]!.filter((line) => line.length > 0);
+  const widthOf = (line: readonly TextRun[]): number => {
+    const [head, ...tail] = line;
+    return context.measure({ ...node, box: {}, runs: [head!, ...tail] } as TextDraft)?.width ?? box;
+  };
+  const shares = lines.map((line) => Math.max(0, box - widthOf(line)) / box);
+  if (shares.length === 1) return (shares[0]! * shares[0]!) / 4;
+  const body = shares.slice(0, -1);
+  return body.reduce((sum, share) => sum + share * share, 0) / body.length;
+}
 
 /**
  * A field's lines, blank ones dropped: `undefined` when the brief does not write it, and an
