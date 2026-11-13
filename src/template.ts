@@ -128,7 +128,7 @@ export const NUMBER_DEFAULTS = {
   'question-size': 40,
   'question-floor': 28,
   /** The most the question may grow into the room its lines leave, never gaining a line. */
-  'question-ceiling': 44,
+  'question-ceiling': 48,
   /** The answer's size and its floor. */
   'answer-size': 32,
   'answer-floor': 22,
@@ -209,8 +209,11 @@ const INNER = {
   edge: 10,
   textX: 151,
   textW: 790,
-  /** The question wraps narrower: the reference breaks it before the right of the answer. */
-  questionW: 740,
+  /**
+   * The question's box: from its left edge to 913 px, where Rafael's reference of 2026-11-12
+   * keeps the same margin on the right as the bands keep on the left.
+   */
+  questionW: 762,
 } as const;
 
 /** The tabs, as paths in the slide's x and in y from their top (the reference's shapes). */
@@ -639,9 +642,11 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
       ),
     ),
   );
-  // The question grows into the room its own lines leave on the right: the largest size up to
-  // `question-ceiling`, a pixel at a time, at which it takes no more lines than at its size.
-  // Measured only; with nothing to measure it keeps its size.
+  // The question fills its box (Rafael, 2026-11-12, with a Photoshop reference: "use as much of
+  // the space as possible"): the largest size up to `question-ceiling`, half a pixel at a time,
+  // at which it takes no more lines than at its size. Its line pitch stays the normal size's
+  // (`layRuling`), so growing never makes the card taller. Measured only; with nothing to
+  // measure it keeps its size.
   const linesAt = (size: number): number | undefined => {
     const node = layRuling(
       context,
@@ -656,7 +661,7 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
   let grown = questionSize;
   if (baseLines !== undefined) {
     const ceiling = Math.max(questionSize, number('question-ceiling'));
-    for (let size = Math.floor(ceiling); size > questionSize; size -= 1) {
+    for (let size = ceiling; size > questionSize; size -= 0.5) {
       if ((linesAt(size) ?? Infinity) <= baseLines) {
         grown = size;
         break;
@@ -721,6 +726,7 @@ function layRuling(
   tunings: Tunings,
 ): Sheet {
   const questionSize = sizes.question;
+  const normalQuestion = numberValue(context, 'question-size', NUMBER_DEFAULTS['question-size']);
   const answerSize = sizes.answer;
   const texts = new Map<string, TextDraft>();
   const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
@@ -763,7 +769,10 @@ function layRuling(
       {
         family: 'CircularXX',
         size: questionSize,
-        lineHeight: RULING.questionLineHeight,
+        // The normal size's pitch, kept when the question grows to fill its box and shrunk
+        // with it below its size: a larger letter never makes the card taller.
+        lineHeight:
+          (RULING.questionLineHeight * Math.min(questionSize, normalQuestion)) / questionSize,
         x: INNER.textX,
         width: INNER.questionW,
       },

@@ -24535,7 +24535,7 @@ var NUMBER_DEFAULTS = {
   "question-size": 40,
   "question-floor": 28,
   /** The most the question may grow into the room its lines leave, never gaining a line. */
-  "question-ceiling": 44,
+  "question-ceiling": 48,
   /** The answer's size and its floor. */
   "answer-size": 32,
   "answer-floor": 22,
@@ -24580,8 +24580,11 @@ var INNER = {
   edge: 10,
   textX: 151,
   textW: 790,
-  /** The question wraps narrower: the reference breaks it before the right of the answer. */
-  questionW: 740
+  /**
+   * The question's box: from its left edge to 913 px, where Rafael's reference of 2026-11-12
+   * keeps the same margin on the right as the bands keep on the left.
+   */
+  questionW: 762
 };
 var FRONT_TAB = "M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z";
 var BACK_TAB = "M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z";
@@ -24852,7 +24855,7 @@ function ruling(context, ink, number4) {
   let grown = questionSize;
   if (baseLines !== void 0) {
     const ceiling = Math.max(questionSize, number4("question-ceiling"));
-    for (let size = Math.floor(ceiling); size > questionSize; size -= 1) {
+    for (let size = ceiling; size > questionSize; size -= 0.5) {
       if ((linesAt(size) ?? Infinity) <= baseLines) {
         grown = size;
         break;
@@ -24904,6 +24907,7 @@ function present(written) {
 }
 function layRuling(context, ink, parts, sizes, tunings) {
   const questionSize = sizes.question;
+  const normalQuestion = numberValue(context, "question-size", NUMBER_DEFAULTS["question-size"]);
   const answerSize = sizes.answer;
   const texts = /* @__PURE__ */ new Map();
   const sections = [...titleSections(context, ink, titleLines(context), "left")];
@@ -24944,7 +24948,9 @@ function layRuling(context, ink, parts, sizes, tunings) {
       {
         family: "CircularXX",
         size: questionSize,
-        lineHeight: RULING.questionLineHeight,
+        // The normal size's pitch, kept when the question grows to fill its box and shrunk
+        // with it below its size: a larger letter never makes the card taller.
+        lineHeight: RULING.questionLineHeight * Math.min(questionSize, normalQuestion) / questionSize,
         x: INNER.textX,
         width: INNER.questionW
       },

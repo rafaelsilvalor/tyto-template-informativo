@@ -79,7 +79,7 @@ const RAFAEL =
   'declaração com trânsito em julgado?';
 
 /**
- * At 40 px a 740 px line holds 37 characters: "Pode um juiz julgar outra vez se a" is 34, and
+ * At 40 px a 762 px line holds 38 characters: "Pode um juiz julgar outra vez se a" is 34, and
  * "questão" does not fit after it, so without the rule the first line ends on "a".
  */
 const STRANDED = 'Pode um juiz julgar outra vez se a questão já foi resolvida?';
@@ -114,15 +114,17 @@ describe('the question', () => {
   });
 
   it('grows into the room its lines leave, up to question-ceiling, never gaining a line', async () => {
-    // At 0.5 em a character, 30 characters take 660 px at 44 px: one line, up to the ceiling.
+    // At 0.5 em a character, 30 characters take 720 px at 48 px: one line, up to the ceiling.
     const short = await question('Pode o juiz rever isso depois?');
-    // 36 characters fit 740 px at 41 px (738) and not at 42 (756): it stops at 41.
+    // 36 characters fit 762 px at 42 px (756) and not at 42.5 (765): it stops at 42.
     const longer = await question('Pode o juiz rever a decisão já dada?');
 
     const sizeOf = (node: TextNode) => node.runs.find((run) => run.kind === 'text')?.size;
     expect(laidLines(short.node)).toHaveLength(1);
-    expect(sizeOf(short.node)).toBe(44);
+    expect(sizeOf(short.node)).toBe(48);
+    // Grown, its lines stay the normal size's 60 px apart, so the card is no taller.
+    expect(short.node.lineHeight * 48).toBeCloseTo(60);
     expect(laidLines(longer.node)).toHaveLength(1);
-    expect(sizeOf(longer.node)).toBe(41);
+    expect(sizeOf(longer.node)).toBe(42);
   });
 });

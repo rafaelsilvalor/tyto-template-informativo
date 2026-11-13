@@ -71,9 +71,10 @@ after it, so no line ends on `a`, `e`, `o`, `é`, `à` or `de` (the banner keeps
 same way). The question, the answer and the source go through the kit's `settle` (Tyto ADR
 0167), as `voce-conhece`'s paragraphs do: none ends on a word of its own, cleared by a word
 moved down or by letter spacing within `orphan-tracking`, never by a smaller size; a word
-nothing clears is reported as `W_TEMPLATE_ORPHAN`. The question also grows, subtly, into the room
-its own lines leave on the right: up to `question-ceiling` (44 px against its 40), and only
-while it takes no more lines and the card still fits.
+nothing clears is reported as `W_TEMPLATE_ORPHAN`. The question also grows to fill its box (up to x =
+913 px): to the largest size up to `question-ceiling` (48 px against its 40) at which it
+takes no more lines, its lines kept the normal size's 60 px apart, so the card never grows
+for it.
 
 **The card** is as tall as what it holds, tabs included, and centred on the slide. It never grows
 past `card-max-height` (1080 px, 135 px from each edge); past that the question and the answer
