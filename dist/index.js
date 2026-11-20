@@ -5236,14 +5236,14 @@ var memo = {
     var _a3;
     (_a3 = inst._zod).deferred ?? (_a3.deferred = []);
     inst._zod.deferred.push(() => {
-      const base3 = inst._zod.parse;
+      const base2 = inst._zod.parse;
       const wrapped = (payload, ctx) => {
         if (ctx.direction !== "backward" && isBackEdge(ctx, payload.value))
           throw new $ZodCyclicError();
-        return base3(payload, ctx);
+        return base2(payload, ctx);
       };
       inst._zod.parse = wrapped;
-      if (inst._zod.run === base3)
+      if (inst._zod.run === base2)
         inst._zod.run = wrapped;
     });
   },
@@ -5255,15 +5255,15 @@ var memo = {
     let lastBucket;
     (_a3 = inst._zod).deferred ?? (_a3.deferred = []);
     inst._zod.deferred.push(() => {
-      const base3 = inst._zod.parse;
+      const base2 = inst._zod.parse;
       const wrapped = (payload, ctx) => {
         if (isRecursiveInst === void 0) {
           const walked = isRecursive(inst, /* @__PURE__ */ new Set(), false);
           if (walked === NONE) {
-            inst._zod.parse = base3;
+            inst._zod.parse = base2;
             if (inst._zod.run === wrapped)
-              inst._zod.run = base3;
-            return base3(payload, ctx);
+              inst._zod.run = base2;
+            return base2(payload, ctx);
           }
           if (walked === PROVEN || rechecked)
             isRecursiveInst = true;
@@ -5272,7 +5272,7 @@ var memo = {
         }
         const input2 = payload.value;
         if (!isRef(input2))
-          return base3(payload, ctx);
+          return base2(payload, ctx);
         let state = ctx[STATE];
         if (!state) {
           state = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
@@ -5301,7 +5301,7 @@ var memo = {
         }
         handoff = bucket;
         const depth = open.length;
-        const result = base3(payload, ctx);
+        const result = base2(payload, ctx);
         handoff = void 0;
         const entry = open.length > depth ? open.pop() : void 0;
         if (result instanceof Promise) {
@@ -5316,7 +5316,7 @@ var memo = {
         return result;
       };
       inst._zod.parse = wrapped;
-      if (inst._zod.run === base3)
+      if (inst._zod.run === base2)
         inst._zod.run = wrapped;
     });
   }
@@ -19507,7 +19507,7 @@ function visit(schema, fnOrHandlers) {
     return h ? h(node2, rewritten) : node2;
   };
   const cache = /* @__PURE__ */ new Map();
-  function run3(s) {
+  function run2(s) {
     const cached2 = cache.get(s);
     if (cached2 === RESOLVING) {
       return new $ZodLazy({
@@ -19533,21 +19533,21 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newShape = {};
         for (const k of keys) {
-          const mapped = run3(oldShape[k]);
+          const mapped = run2(oldShape[k]);
           if (mapped !== oldShape[k])
             changed = true;
           newShape[k] = mapped;
         }
         let newCatchall = def.catchall;
         if (def.catchall) {
-          newCatchall = run3(def.catchall);
+          newCatchall = run2(def.catchall);
           if (newCatchall !== def.catchall)
             changed = true;
         }
         return changed ? clone(s, { ...def, shape: newShape, catchall: newCatchall }) : s;
       }
       case "array": {
-        const mapped = run3(def.element);
+        const mapped = run2(def.element);
         return mapped === def.element ? s : clone(s, { ...def, element: mapped });
       }
       case "tuple": {
@@ -19555,14 +19555,14 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newItems = [];
         for (const item of oldItems) {
-          const mapped = run3(item);
+          const mapped = run2(item);
           if (mapped !== item)
             changed = true;
           newItems.push(mapped);
         }
         let newRest = def.rest;
         if (def.rest) {
-          newRest = run3(def.rest);
+          newRest = run2(def.rest);
           if (newRest !== def.rest)
             changed = true;
         }
@@ -19570,12 +19570,12 @@ function visit(schema, fnOrHandlers) {
       }
       case "record":
       case "map": {
-        const newKey = run3(def.keyType);
-        const newVal = run3(def.valueType);
+        const newKey = run2(def.keyType);
+        const newVal = run2(def.valueType);
         return newKey === def.keyType && newVal === def.valueType ? s : clone(s, { ...def, keyType: newKey, valueType: newVal });
       }
       case "set": {
-        const newVal = run3(def.valueType);
+        const newVal = run2(def.valueType);
         return newVal === def.valueType ? s : clone(s, { ...def, valueType: newVal });
       }
       case "union": {
@@ -19583,7 +19583,7 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newOptions = [];
         for (const opt of oldOptions) {
-          const mapped = run3(opt);
+          const mapped = run2(opt);
           if (mapped !== opt)
             changed = true;
           newOptions.push(mapped);
@@ -19591,8 +19591,8 @@ function visit(schema, fnOrHandlers) {
         return changed ? clone(s, { ...def, options: newOptions }) : s;
       }
       case "intersection": {
-        const newLeft = run3(def.left);
-        const newRight = run3(def.right);
+        const newLeft = run2(def.left);
+        const newRight = run2(def.right);
         return newLeft === def.left && newRight === def.right ? s : clone(s, { ...def, left: newLeft, right: newRight });
       }
       case "optional":
@@ -19604,23 +19604,23 @@ function visit(schema, fnOrHandlers) {
       case "nonoptional":
       case "promise":
       case "success": {
-        const newInner = run3(def.innerType);
+        const newInner = run2(def.innerType);
         return newInner === def.innerType ? s : clone(s, { ...def, innerType: newInner });
       }
       case "pipe": {
-        const newIn = run3(def.in);
-        const newOut = run3(def.out);
+        const newIn = run2(def.in);
+        const newOut = run2(def.out);
         return newIn === def.in && newOut === def.out ? s : clone(s, { ...def, in: newIn, out: newOut });
       }
       case "function": {
-        const newInput = run3(def.input);
-        const newOutput = run3(def.output);
+        const newInput = run2(def.input);
+        const newOutput = run2(def.output);
         return newInput === def.input && newOutput === def.output ? s : clone(s, { ...def, input: newInput, output: newOutput });
       }
       case "lazy": {
         const original = def.getter;
         const { _cachedInner, ...rest } = def;
-        return clone(s, { ...rest, getter: () => run3(original()) });
+        return clone(s, { ...rest, getter: () => run2(original()) });
       }
       // A leaf by choice: `parts` are regex fragments, not data positions.
       case "template_literal":
@@ -19651,7 +19651,7 @@ function visit(schema, fnOrHandlers) {
       }
     }
   }
-  return run3(schema);
+  return run2(schema);
 }
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/deep-partial.js
@@ -19721,7 +19721,7 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.39.0/node_modules/@rafaelsilvalor/tyto-core/dist/chunk-WZSLWFYX.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.54.0/node_modules/@rafaelsilvalor/tyto-core/dist/chunk-5L2PHC5K.js
 var SVG_MARKUP_WAY_OUT = "only flat shapes painted by presentation attributes are inlined: draw it as a contour (a vector of kind 'path'), place it as a PNG, or re-export it from Illustrator with Styling set to Presentation Attributes";
 var diagnosticCodes = {
   // Three syntax codes and not one, because fatality is a property of the code and one
@@ -20061,2177 +20061,7 @@ var diagnosticCodes = {
   },
   E_PLUGIN_PROTOCOL: {
     severity: "error",
-    summary: "An isolated plugin sent the host a message that does not match the RPC protocol.",
-    template: "Plugin '{plugin}' sent a message the host cannot read: {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It costs the one frame whose answer it was; the others are drawn (ADR 0025)."
-  },
-  E_PLUGIN_CALL: {
-    severity: "error",
-    summary: "A function an isolated plugin registered threw when the host called it.",
-    template: "Plugin '{plugin}' threw while the host was calling it: {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It costs the one frame the call was for; the others are drawn (ADR 0025)."
-  },
-  E_PLUGIN_TIMEOUT: {
-    severity: "error",
-    summary: "An isolated plugin did not answer within its deadline, and its process was ended.",
-    template: "Plugin '{plugin}' did not answer within {seconds} s, so its process was ended.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It costs the one frame the call was for; the others are drawn (ADR 0025)."
-  },
-  E_CREDENTIAL_MISSING: {
-    severity: "error",
-    summary: "A plugin asked for a credential it declared, and this host has no value for it.",
-    template: "Plugin '{plugin}' asked for credential '{key}', and {source} holds none.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  E_CREDENTIAL_TOO_LARGE: {
-    severity: "error",
-    summary: "A credential to store is larger than the ceiling every host keeps (ADR 0134).",
-    template: "Plugin '{plugin}' tried to store credential '{key}' of {bytes} bytes; the ceiling is {limit}.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  E_CREDENTIAL_READ_ONLY: {
-    severity: "error",
-    summary: "A plugin tried to store or forget a credential on a host that only reads them.",
-    template: "Plugin '{plugin}' tried to change credential '{key}', and {source} is read-only here.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  // A plugin's private cache and the workspace files it reaches through the host (ADR 0138,
-  // completing ADR 0130). Three codes, so a plugin can tell "trust the folder" from the rest.
-  E_PLUGIN_CACHE: {
-    severity: "error",
-    summary: "A plugin's cache call was refused: an empty or oversized key, an entry over the ceiling, or a host with no cache.",
-    template: "Plugin '{plugin}' could not use its cache entry '{key}': {problem}.",
-    spec: "docs/adr/0138-a-plugin-cache-and-workspace-files-cross-the-host-boundary.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  E_WORKSPACE_FILE: {
-    severity: "error",
-    summary: "A plugin's workspace file was refused: outside the folder, through a link, missing, too large, inside .tyto/, or no folder is open.",
-    template: "Plugin '{plugin}' could not use workspace file '{path}': {problem}.",
-    spec: "docs/adr/0138-a-plugin-cache-and-workspace-files-cross-the-host-boundary.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  // Withheld, not missing: trusting the folder lets the same call through (ADR 0111).
-  E_WORKSPACE_FILE_RESTRICTED: {
-    severity: "error",
-    summary: "A plugin asked for a file of a workspace the person has not trusted.",
-    template: "Plugin '{plugin}' asked for workspace file '{path}', and this folder is restricted; trust the folder to let plugins read and write its files.",
-    spec: "docs/adr/0138-a-plugin-cache-and-workspace-files-cross-the-host-boundary.md",
-    fatal: false,
-    fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
-  },
-  W_PLUGIN_CRASHED: {
-    severity: "warning",
-    summary: "An installed plugin's process crashed on an earlier run. History, not a refusal.",
-    template: "Plugin '{plugin}' crashed at {at}: {reason}. It is still activated; installing or enabling it again clears this.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "A note about an earlier run; nothing in this one is missing because of it."
-  },
-  E_PLUGIN_FETCH: {
-    severity: "error",
-    summary: "A plugin could not be copied or fetched from where tyto plugin install was told.",
-    template: "Could not fetch a plugin from '{source}': {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // The plugin files' codes (TYTO-432, ADR 0151). A file is tolerant per key and per entry,
-  // as `project.json` is: what is refused costs itself alone, and the rest of the file loads.
-  // Errors where a person wrote something that cannot stand, warnings where Tyto chose for them.
-  E_PLUGIN_FILE_SYNTAX: {
-    severity: "error",
-    summary: "A plugin file or its lock could not be read or is not YAML or JSON of the shape it needs.",
-    template: "Plugin file '{file}' was not loaded: {problem}.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Only what that file names is missing; a brief that needs it says so on its own."
-  },
-  W_PLUGIN_FILE_KEY_UNKNOWN: {
-    severity: "warning",
-    summary: "A plugin file has a key Tyto does not know.",
-    template: "Plugin file '{file}': '{path}' is not a key Tyto knows, so it is ignored.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "An ignored key changes nothing that loads."
-  },
-  E_PLUGIN_FILE_ENTRY: {
-    severity: "error",
-    summary: "An entry of a plugin file was refused, and that entry alone does not load.",
-    template: "Plugin file '{file}': '{path}' was refused: {problem}.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Only that entry is missing; the rest of the file loads."
-  },
-  E_PLUGIN_FILE_DUPLICATE: {
-    severity: "error",
-    summary: "One name is given twice in one folder's plugin files, so that folder supplies it from neither.",
-    template: "'{name}' is named by both '{file}' and '{other}' in one folder, which chose no order between them, so neither supplies it.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Only that name is missing; a brief that needs it says so on its own."
-  },
-  W_PLUGIN_FILE_OVERRIDDEN: {
-    severity: "warning",
-    summary: "A project's plugin file names what the machine's names too, and the project's wins.",
-    template: "'{name}' is named by the project's '{file}' and the machine's '{other}'; the project's is used.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Something loads; it is the project entry rather than the machine one."
-  },
-  W_PLUGIN_FILE_TEMPLATE_SHADOWED: {
-    severity: "warning",
-    summary: "A plugin file configures a template from a plugin, and another source wins that name, so the configurations do not apply.",
-    template: "'{file}' configures template '{template}' from plugin '{plugin}', but the one in '{used}' is used; its configurations and aliases do not apply to it.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "The template that won the name renders with its own defaults."
-  },
-  W_PLUGIN_FILE_REPLACES_INSTALLED: {
-    severity: "warning",
-    summary: "A plugin from the plugin files has the name of one installed with tyto plugin install.",
-    template: "Plugin '{plugin}' comes from plugin file '{file}', so the copy installed with tyto plugin install is not activated.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "A plugin of that name loads; it is the one the files name."
-  },
-  W_PLUGIN_FILE_FETCH: {
-    severity: "warning",
-    summary: "A source the plugin files name could not be fetched.",
-    template: "Could not fetch '{git}' at '{ref}': {problem}. {outcome}",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "The copy fetched earlier loads when there is one; a brief that needs one that is missing says so on its own."
-  },
-  E_PLUGIN_FILE_SOURCE_REFUSED: {
-    severity: "error",
-    summary: "A commit a plugin file names was fetched and could not be loaded as a plugin.",
-    template: "'{git}' at '{ref}' resolved to commit {commit}, which was refused: {problem}. {outcome}",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "The commit locked before loads when there is one; otherwise nothing from that source does."
-  },
-  // The gallery (ADR 0162): a maintained index of templates and plugins, and the CLI verbs that
-  // write its entries into the machine's plugin files. Tolerant per entry, as a plugin file is.
-  E_GALLERY_INDEX_SYNTAX: {
-    severity: "error",
-    summary: "The gallery index could not be read or is not YAML of the shape it needs.",
-    template: "Gallery index '{index}' was not read: {problem}.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "The gallery lists nothing; templates and plugins already installed still load."
-  },
-  E_GALLERY_INDEX_ENTRY: {
-    severity: "error",
-    summary: "An entry of the gallery index is refused, and the others stand.",
-    template: "Gallery index '{index}': entry {entry} was refused: {problem}.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Only that entry is missing from the gallery."
-  },
-  W_GALLERY_INDEX_KEY_UNKNOWN: {
-    severity: "warning",
-    summary: "The gallery index has a key Tyto does not know.",
-    template: "Gallery index '{index}': unknown key {path}; it is ignored.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "The key is ignored and the entry stands."
-  },
-  E_GALLERY_INDEX_FETCH: {
-    severity: "error",
-    summary: "The gallery index could not be fetched, and no copy was fetched before.",
-    template: "Could not fetch the gallery index '{index}': {problem}.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "The gallery lists nothing; templates and plugins already installed still load."
-  },
-  W_GALLERY_INDEX_OFFLINE: {
-    severity: "warning",
-    summary: "The gallery index could not be fetched, and the copy fetched before is shown.",
-    template: "Could not fetch the gallery index '{index}': {problem}. Showing the copy from {fetched}.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "The earlier copy is read instead, and may miss a newer version."
-  },
-  E_GALLERY_ENTRY_UNKNOWN: {
-    severity: "error",
-    summary: "A gallery command names an entry the index does not list.",
-    template: "The gallery index lists no entry '{entry}'.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Nothing is written."
-  },
-  E_GALLERY_ENGINE: {
-    severity: "error",
-    summary: "A gallery entry needs a plugin API this Tyto does not provide.",
-    template: "'{entry}' needs plugin API {range}, and this Tyto provides {version}; update Tyto first.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Nothing is written; the entry stays listed."
-  },
-  E_GALLERY_NOT_INSTALLED: {
-    severity: "error",
-    summary: "tyto gallery update names an entry no machine plugin file holds.",
-    template: "'{entry}' is not in any plugin file of this machine; install it first.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Nothing is written."
-  },
-  E_GALLERY_ENTRY_EDITED: {
-    severity: "error",
-    summary: "The plugin file entry the gallery wrote was changed by hand since.",
-    template: "'{entry}' in '{file}' was changed by hand since the gallery wrote it ({written} is now {found}); nothing was moved. Pass --force to move it anyway.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Nothing is written."
-  },
-  E_GALLERY_WRITE: {
-    severity: "error",
-    summary: "The gallery could not write an entry into a plugin file without changing the rest of it.",
-    template: "Could not write '{entry}' into '{file}': {problem}. The file was left as it was.",
-    spec: "docs/adr/0162-a-gallery-index-lists-templates-and-plugins.md",
-    fatal: false,
-    fatality: "Nothing is written."
-  },
-  E_SCENE_SHAPE: {
-    severity: "error",
-    summary: "A scene does not match the IR schema.",
-    template: "Scene is invalid at '{path}': {problem}.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_DUPLICATE_ID: {
-    severity: "error",
-    summary: "The same id is used more than once in one scene.",
-    template: "Id '{id}' is used {count} times; ids must be unique within a scene.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_MASK_NOT_FOUND: {
-    severity: "error",
-    summary: "A mask references a node the scene does not contain.",
-    template: "Node '{id}' is masked by '{maskId}', which no node in the scene defines.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_MASK_DESCENDANT: {
-    severity: "error",
-    summary: "A mask references a descendant of the node it masks.",
-    template: "Node '{id}' is masked by '{maskId}', which is one of its own descendants.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_FONT_NOT_DECLARED: {
-    severity: "error",
-    summary: "Text uses a font family the scene does not declare.",
-    template: "Node '{id}' uses font family '{family}', which the scene does not declare.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_ASSET_NOT_DECLARED: {
-    severity: "error",
-    summary: "A node or paint uses an asset the scene does not declare.",
-    template: "Node '{id}' uses asset '{assetId}', which the scene does not declare.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  E_SCENE_EMPTY_TEXT: {
-    severity: "error",
-    summary: "A text node has nothing to draw \u2014 no runs at all, or only line breaks.",
-    template: "Text node '{id}' has nothing to draw; it needs at least one run of text.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "The IR is malformed, so the exporter has nothing it can draw."
-  },
-  // The way out is part of the message because a refusal that does not say what to do
-  // instead sends the author to the ADR to find out (ADR 0068).
-  E_SCENE_SVG_MARKUP: {
-    severity: "error",
-    summary: "A vector of kind 'svg' carries markup outside the subset Tyto inlines.",
-    template: `Vector '{id}' carries {problem}, which Tyto will not inline; ${SVG_MARKUP_WAY_OUT}.`,
-    spec: "docs/adr/0068-inline-svg-markup-is-a-closed-subset-checked-in-core.md",
-    fatal: true,
-    fatality: "The IR is malformed like any other broken invariant, and drawing the markup anyway is the harm the check exists to prevent."
-  },
-  E_TEMPLATE_VALUE: {
-    severity: "error",
-    summary: "A template SDK builder was given a value it cannot turn into IR.",
-    template: "Template value for '{field}' is invalid: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_TEMPLATE_CRASH: {
-    severity: "error",
-    summary: "A template threw while building its scene, which is a bug in the template.",
-    template: "Template '{template}' failed while building the scene: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  // Read, then parse, then validate: the three ways a formats file fails, in the order it
-  // fails them. The read used to report E_TEMPLATE_READ, which named the wrong kind of file
-  // and told a diagnostics panel that a broken project was a broken template (TYTO-73).
-  E_FORMATS_READ: {
-    severity: "error",
-    summary: "The project's formats.yaml could not be read from the filesystem.",
-    template: "Could not read formats file '{path}': {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "No formats file means no frame has a size."
-  },
-  E_FORMATS_SYNTAX: {
-    severity: "error",
-    summary: "The project's formats.yaml is not valid YAML.",
-    template: "Formats file '{path}' is not valid YAML: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "No formats file means no frame has a size."
-  },
-  E_FORMATS_SHAPE: {
-    severity: "error",
-    summary: "A formats file parses as YAML but does not match the formats schema.",
-    template: "Formats are invalid at '{path}': {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "No formats file means no frame has a size."
-  },
-  E_FORMAT_NOT_DEFINED: {
-    severity: "error",
-    summary: "A template renders a format the project does not define a size for.",
-    template: "Template '{template}' renders format '{format}', which the project does not define. Defined: {defined}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "A frame with no size cannot be drawn, and `compile` refuses before it builds anything \u2014 so the formats that are defined do not render either, which is what would have to change first."
-  },
-  E_MANIFEST_SYNTAX: {
-    severity: "error",
-    summary: "A template manifest is not valid YAML.",
-    template: "Manifest '{path}' is not valid YAML: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The registry answers with no manifest at all, and a manifest is what every slot is checked against."
-  },
-  E_MANIFEST_SHAPE: {
-    severity: "error",
-    summary: "A template manifest parses as YAML but does not match the manifest schema.",
-    template: "Manifest is invalid at '{path}': {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The registry answers with no manifest at all, and a manifest is what every slot is checked against."
-  },
-  E_TEMPLATE_DUPLICATE: {
-    severity: "error",
-    summary: "Two template folders declare the same manifest name.",
-    template: "Template name '{name}' is declared by both '{first}' and '{second}'.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The registry answers with no manifest at all, and a manifest is what every slot is checked against."
-  },
-  // A name with two bodies rather than two folders, which is why it is not
-  // `E_TEMPLATE_DUPLICATE`: the registry sees one manifest and is right to. Only whoever
-  // loads the build knows there are two ways to produce it, so this is the earliest
-  // anybody could report it — and reporting beats picking, because a silent winner is a
-  // template that changes behaviour when somebody edits the file it was ignoring.
-  E_TEMPLATE_AMBIGUOUS: {
-    severity: "error",
-    summary: "A template name has both bundled code and a markup file, and nothing decides which is drawn.",
-    template: "Template '{name}' ships code and also has '{file}' in '{directory}'; keep one of the two.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "There is no template to build with, and a template is what every artwork is drawn through."
-  },
-  // Says template, and now only means template: a folder, a manifest.yaml or a
-  // template.html. What the path points at is in the message, so a reader does not have to
-  // recognise a filename to know which of the three it was.
-  E_TEMPLATE_READ: {
-    severity: "error",
-    summary: "A template folder, manifest or markup file could not be read from the filesystem.",
-    template: "Could not read template '{path}': {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The registry answers with no manifest at all, and a manifest is what every slot is checked against."
-  },
-  E_INPUT_READ: {
-    severity: "error",
-    summary: "A file or folder a command was pointed at could not be read.",
-    template: "Could not read '{path}': {problem}.",
-    spec: "docs/integrations.md",
-    fatal: true,
-    fatality: "There is no brief to render."
-  },
-  E_EXPORT_ASSET_UNRESOLVED: {
-    severity: "error",
-    summary: "An exporter was given no bytes for an asset the scene draws.",
-    template: "Asset '{asset}' on '{node}' was not resolved to embeddable bytes, and an export makes no network requests.",
-    spec: "docs/ir-schema.md",
-    fatal: false,
-    fatality: "The bytes were never loaded, which is a wiring failure rather than something the brief said \u2014 and since ADR 0035 the exporter draws the gap mark in the box the picture would have filled, so the artwork names the hole itself."
-  },
-  E_EXPORT_FONT_UNRESOLVED: {
-    severity: "error",
-    summary: "An exporter was given no bytes for a font the scene draws text in.",
-    template: "Font '{font}' was not resolved to embeddable bytes; text would render in whatever the viewer has, and the output must be deterministic.",
-    spec: "docs/ir-schema.md",
-    fatal: true,
-    fatality: "Text drawn in whatever the viewer has is a different artwork, and the substitution is invisible in the output."
-  },
-  E_EXPORT_UNSUPPORTED: {
-    severity: "error",
-    summary: "A scene uses something the chosen exporter cannot express at all.",
-    template: "'{node}' uses {feature}, which {exporter} cannot express: {detail}.",
-    spec: "docs/ir-schema.md",
-    fatal: false,
-    fatality: "Every producer of this code now leaves the node visible rather than leaving it out (ADR 0035): a mask that cannot be built is dropped instead of hiding what it was applied to, and text that cannot be drawn as outlines is drawn as text. Inline SVG markup outside the subset is the one exception: the node keeps its box and draws nothing, because drawing that markup is the harm (ADR 0068)."
-  },
-  W_EXPORT_APPROXIMATED: {
-    severity: "warning",
-    summary: "An exporter rendered something close to, but not exactly, what the IR asked for.",
-    template: "'{node}': {feature} is approximated by {exporter} \u2014 {detail}.",
-    spec: "docs/ir-schema.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A face installed on this machine can be a licence the person holds and a plugin does
-  // not; it crosses only under `font:<family>`, approved at install (ADR 0048).
-  W_PLUGIN_FONT_WITHHELD: {
-    severity: "warning",
-    summary: "A face installed on this machine was not sent to a plugin's template, which did not ask for it.",
-    template: "Plugin '{plugin}' measures '{family}' in template '{template}', and that face is installed on this machine: it is sent only to a plugin whose manifest declares 'font:{family}'. The template measured it as unmeasurable.",
-    spec: "docs/adr/0048-an-installed-code-template-runs-in-its-plugin.md",
-    fatal: false,
-    fatality: "The frame is drawn and laid out against the face; only the measurements the template took itself before it placed the text, were missing."
-  },
-  W_FONT_SUBSTITUTED: {
-    severity: "warning",
-    summary: "A face the scene asks this machine for is not installed, so a bundled one drew it.",
-    template: "Font '{font}' is not installed on this machine; drawn in '{substitute}' instead. Install the face to render it as designed.",
-    spec: "docs/adr/0037-a-face-can-come-from-the-machine.md",
-    fatal: false,
-    fatality: "The artwork is complete and measured against the face that was drawn, so the line breaks match the pixels; only the typeface differs, and this is what says so."
-  },
-  W_FONT_UNAVAILABLE: {
-    severity: "warning",
-    summary: "A face the scene asks this machine for is not installed and is not on Google Fonts, so a bundled one drew it.",
-    template: "Font '{font}' is not installed on this machine and Tyto cannot download it: it is not on Google Fonts, so it is likely a licensed font. Drawn in '{substitute}' instead.{alternatives} Install '{family}' to render it as designed.",
-    spec: "docs/adr/0120-a-missing-font-is-fetched-from-google-fonts.md",
-    fatal: false,
-    fatality: "The artwork is drawn and measured in the substitute, as `W_FONT_SUBSTITUTED` says for any missing face; this takes its place when Google Fonts cannot supply the family either, and names the free families the template's manifest lists as alternatives."
-  },
-  W_FONT_SOURCE_FAILED: {
-    severity: "warning",
-    summary: "A plugin that serves a font family could not supply a face the scene asks for.",
-    template: "Font '{font}' could not be fetched from plugin '{plugin}': {problem}.",
-    spec: "docs/adr/0117-a-plugin-source-is-fetched-once-and-read-from-a-cache.md",
-    fatal: false,
-    fatality: "The face is drawn as any face this machine lacks is, by a bundled one with `W_FONT_SUBSTITUTED` beside this; this names why the plugin did not supply it."
-  },
-  E_RENDER_FAILED: {
-    severity: "error",
-    summary: "A frame could not be turned into bytes by the exporter or the rasterizer.",
-    template: "Frame '{frame}' could not be rendered as {kind}: {problem}.",
-    spec: "docs/architecture.md",
-    fatal: false,
-    fatality: "One frame of twelve. The others are already written, and a file that is missing from `result.json` is visible in a way a hole inside an artwork is not."
-  },
-  // No longer produced since ADR 0108, and kept rather than deleted: the code is public, a
-  // `result.json` written before 0108 can carry it, and a reader that meets it in one should
-  // find what it meant. The catalogue has deleted no code before this one, so there was no
-  // convention to follow; this is the one ADR 0108 sets.
-  E_OUTPUT_WRITE: {
-    severity: "error",
-    summary: "No longer produced since ADR 0108. An artifact was rendered but could not be written to the output.",
-    template: "Could not write '{artifact}': {problem}.",
-    spec: "docs/adr/0108-a-locked-artwork-is-worth-retrying.md",
-    fatal: false,
-    fatality: "One artifact that did not reach the output, counted against `planned`. Since ADR 0108 a folder in the way is `E_OUTPUT_FILE_BLOCKED` and anything else the sink rejects with ends the run as an internal failure (exit 2)."
-  },
-  // An error and not an internal failure: the file stays where it is until somebody moves
-  // it, so retrying the same invocation fails the same way every time (TYTO-129).
-  E_DELIVERY_FOLDER_BLOCKED: {
-    severity: "error",
-    summary: "An export needs a folder at a path where a file already is.",
-    // Worded for every writer since TYTO-490: the export box, a preset, `--folder` and a
-    // delivery's export all make their folder this way, and only the last is a delivery.
-    template: "'{path}' is a file, and Tyto needs a folder with that name. Rename or move the file, or export somewhere else.",
-    spec: "docs/adr/0157-a-delivery-folder-is-one-key-in-the-project-file.md",
-    fatal: true,
-    fatality: "Fatal when the folder the artwork or `result.json` goes in is held: there is nowhere to write it, so nothing is."
-  },
-  // The mirror of the one above, and a code of its own because the fix is the inverse and the
-  // catalogue has one sentence per code. "Output" and not "delivery": `result.json` and the
-  // artwork go through the writer `--out` shares with `--folder` (TYTO-243).
-  E_OUTPUT_FILE_BLOCKED: {
-    severity: "error",
-    summary: "Tyto needs to write a file at a path where a folder already is.",
-    template: "'{path}' is a folder, and Tyto needs to write a file with that name. Rename or move the folder, or write somewhere else.",
-    spec: "docs/adr/0057-a-delivery-carries-its-brief-and-its-images.md",
-    // Not fatal since ADR 0108: the one stage that weighs it, the job, meets it on an artwork
-    // file, and there it costs that frame and no other. The copied brief stops the run by
-    // refusing to open the delivery, which never asks the catalogue.
-    fatal: false,
-    fatality: "Depends on the file, and nothing that is drawn is lost. The copied brief: the delivery is not opened, so nothing is rendered. An artwork file: that one artifact is missing and the others are written. `template.txt` or an image in `assets/`: the artwork is written and that file is not. `result.json`: the artwork is written and no report is."
-  },
-  // Raised by `compile` while it lays out text (ADR 0110): the font source answers nothing for
-  // the face, so the export that follows is certain to stop at E_EXPORT_FONT_UNRESOLVED.
-  E_FONT_FACE_UNAVAILABLE: {
-    severity: "error",
-    summary: "Text asks for a face the fonts Tyto can read do not have, so it cannot be exported.",
-    template: "Font '{font}' is not available to template '{template}', so this text cannot be exported. Remove the formatting that asks for it, or use a template whose font has that face.",
-    spec: "docs/adr/0110-italic-ships-and-a-missing-face-is-a-compile-error.md",
-    fatal: false,
-    fatality: "The frame is still built and previewed, with the text laid out from the lines the brief wrote; it is an error because the export is certain to fail, and saying so while the brief is written is the point."
-  },
-  W_TEXT_OVERFLOW: {
-    severity: "warning",
-    summary: "Compiled text does not fit its frame in one of the requested formats.",
-    template: "Text in slot '{slot}' overflows its frame by {overflow}px in format '{format}'.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // Raised by `compile` while it lays out text, on the host only (ADR 0168): the host lays out
-  // every frame again with every bundled face, a code template's included, so it is the one
-  // place that sees the whole symbol chain and the layout that is drawn.
-  W_GLYPH_MISSING: {
-    severity: "warning",
-    summary: "Text uses characters that neither its font nor the bundled symbol faces can draw.",
-    template: "Text in slot '{slot}' uses {glyphs}, which neither '{font}' nor the bundled symbol faces can draw, in format '{format}'. Another font on this machine may draw them, measured wrong.",
-    spec: "docs/adr/0168-a-glyph-its-face-lacks-is-drawn-in-the-symbol-face.md",
-    fatal: false,
-    fatality: "The artwork is drawn. The characters are measured as the font measures a glyph it lacks, and the browser draws them in whatever face it finds, so the line around them may break or align wrong."
-  },
-  // Raised by a template through `context.report` rather than by a stage (ADR 0058). The
-  // template names only the code and how far it ran over; `compile` fills in the artwork and
-  // the format and points the range at the directive the artwork came from.
-  W_TEMPLATE_OVERFLOW: {
-    severity: "warning",
-    summary: "An artwork's content runs past the room its template has for it in one format.",
-    template: "Artwork '{artwork}' does not fit format '{format}': its content runs {overflow}px past the room the template has, and that part is cut.",
-    spec: "docs/adr/0058-a-template-reports-warnings-beside-its-frame.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // Raised by a template the same way (ADR 0167): every adjustment it allowed itself was tried
-  // and a paragraph still ends on a line of one word. The art is drawn with that line.
-  W_TEMPLATE_ORPHAN: {
-    severity: "warning",
-    summary: "A paragraph of an artwork ends on a line holding a single word in one format.",
-    template: "Artwork '{artwork}' ends a paragraph on the single word '{word}' in format '{format}': no size or letter spacing within the template's limits moved another word down to it.",
-    spec: "docs/adr/0167-a-template-spaces-its-blocks-by-weight-and-keeps-orphans-off-its-text.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // Raised by a template the same way (TYTO-502): a file it draws with, a format's background
-  // say, is not in its folder. A warning, as every template report is (ADR 0058): the rest of
-  // the frame is drawn, and the person sees which file to put back.
-  W_TEMPLATE_FILE_MISSING: {
-    severity: "warning",
-    summary: "A file an artwork's template draws with is not in the template's folder in one format.",
-    template: "Artwork '{artwork}' is drawn without '{path}' in format '{format}': template '{template}' has no such file in its folder.",
-    spec: "docs/adr/0058-a-template-reports-warnings-beside-its-frame.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // Warnings and not errors: a configuration is tolerant per value, as a plugin file is per
-  // entry (ADR 0151 decision 2). The template draws with its default instead, and says so.
-  W_TEMPLATE_VALUE_UNKNOWN: {
-    severity: "warning",
-    summary: "A configuration sets a value the template does not declare configurable.",
-    template: "Template '{template}' declares no configurable value '{name}'; the setting is ignored.",
-    spec: "docs/adr/0153-a-template-declares-its-configurable-values-in-its-manifest.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_TEMPLATE_VALUE_INVALID: {
-    severity: "warning",
-    summary: "A configuration sets a declared value to one of the wrong kind or outside its limits.",
-    template: "Value '{name}' of template '{template}' {problem}; the template's default is used.",
-    spec: "docs/adr/0153-a-template-declares-its-configurable-values-in-its-manifest.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // An error and never a precedence: if an alias could shadow a template, which one a brief
-  // renders would depend on whether a configuration somewhere had that name (ADR 0151 decision 7).
-  E_TEMPLATE_ALIAS_TAKEN: {
-    severity: "error",
-    summary: "A plugin file gives a configuration an alias that is a template's name.",
-    template: "Alias '{alias}' in plugin file '{file}' is the name of a template, so the alias does not load and the template keeps the name.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Only that alias is missing; the template of that name renders as before."
-  },
-  // The brief side of a configuration (TYTO-440) is tolerant per key as its values are: a
-  // default, a format list or a rule the template cannot take costs that one key.
-  W_CONFIGURATION_BRIEF_INVALID: {
-    severity: "warning",
-    summary: "A configuration's brief block sets something the template cannot take.",
-    template: "brief.{key} in configuration '{configuration}' of template '{template}' {problem}; it is ignored.",
-    spec: "docs/plugin-authoring.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // Never looser: the template was drawn for its own limit, so a configuration may only tighten it.
-  W_EDITOR_RULE_LOOSER: {
-    severity: "warning",
-    summary: "A configuration's editor rule allows more than the template's manifest does.",
-    template: "The editor rule on slot '{slot}' in configuration '{configuration}' allows {max}, more than template '{template}' allows ({allowed}); the template's limit stands.",
-    spec: "docs/plugin-authoring.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning where the manifest's own `max` is an error: the template still draws the value,
-  // and the configuration's rule is the house's, not the template's.
-  W_SLOT_OVER_CONFIGURED_LIMIT: {
-    severity: "warning",
-    summary: "A slot runs past the editor rule of the configuration the brief reached.",
-    template: "Slot '{slot}' {measured}, and configuration '{configuration}' of template '{template}' allows {max}.",
-    spec: "docs/plugin-authoring.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_UNUSED_SLOT: {
-    severity: "warning",
-    summary: "The brief sets a slot the chosen template never renders.",
-    template: "Slot '{slot}' is set in the brief but template '{template}' does not use it.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_MARKUP_IN_FRONTMATTER: {
-    severity: "warning",
-    summary: "A frontmatter scalar on a rich-text slot contains what looks like inline markup.",
-    template: "Slot '{slot}' is set in the frontmatter, where '{markup}' is literal text. Write it as a ::{slot} directive for it to be markup.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because the brief still means what the author meant: the
-  // `\` is dropped and the line breaks once, as every block line does (ADR 0109). It says so
-  // because the `\` used to add an empty line, and an author who wrote it for that gets told.
-  W_REDUNDANT_BREAK: {
-    severity: "warning",
-    summary: "A line of a directive body ends in a `\\` and another line of its indented block follows, which already starts a new line.",
-    template: "Every line of an indented block already starts a new line; this \\ is not needed.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because nothing is wrong: the run produced the template the
-  // user asked for. It exists because "my edit to the built-in did nothing" and "why does
-  // mine look different on this machine" are the two questions shadowing will generate, and
-  // one line answers both (ADR 0020).
-  W_BRAND_KIT_SHADOWED: {
-    severity: "warning",
-    summary: "Two plugins contribute a kit for the same brand; the earlier plugin is the one used.",
-    template: "The brand kit for '{brand}' from plugin '{shadowed}' is shadowed by the one from '{used}', which was registered first.",
-    spec: "docs/adr/0063-a-plugin-contributes-a-brand-kit.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning, never an error: a render with placeholders is the normal public case (ADR 0065).
-  // Said only for a brand a plugin file names, where a typo is the likely reason; a
-  // manifest's brand with no kit stays silent, as every render without the private kit is.
-  W_BRAND_KIT_MISSING: {
-    severity: "warning",
-    summary: "A configuration names a brand that no installed brand kit offers.",
-    template: "No installed brand kit offers '{brand}', which '{alias}' names; it draws the placeholders and the template's own accent.",
-    spec: "docs/adr/0155-a-configuration-picks-its-brand-and-restricts-its-formats.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_CONFIGURATION_BRAND_INVALID: {
-    severity: "warning",
-    summary: "A configuration's brand is not spelled as a brand id.",
-    template: "The brand of configuration '{configuration}' of template '{template}' must be lower case letters, digits and single hyphens; it is ignored.",
-    spec: "docs/adr/0155-a-configuration-picks-its-brand-and-restricts-its-formats.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_CONFIGURATION_FORMATS_INVALID: {
-    severity: "warning",
-    summary: "A configuration's formats restriction, or its brief's default formats, names what it cannot.",
-    template: "In configuration '{configuration}' of template '{template}', {problem}.",
-    spec: "docs/adr/0155-a-configuration-picks-its-brand-and-restricts-its-formats.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_TEMPLATE_SHADOWED: {
-    severity: "warning",
-    summary: "Two template sources declare the same name; the earlier source is the one used.",
-    template: "Template '{name}' in '{shadowed}' is shadowed by the one in '{used}', which is searched first.",
-    spec: "docs/adr/0020-built-in-template-pack.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because a manifest that ignores the convention is still a
-  // valid manifest: the vocabulary is a layer on top of ADR 0005. Only `tyto template check`
-  // asks for it, since the template's author is the only person who can act on it.
-  W_SLOT_VOCABULARY: {
-    severity: "warning",
-    summary: "A manifest names a slot against the standard slot vocabulary: a known synonym, a reserved name with the wrong shape, or a repeatable slot not named lamina.",
-    template: "Slot '{slot}' {problem}; {suggestion}.",
-    spec: "docs/slot-vocabulary.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because the brief is not what is wrong: the plugin belongs
-  // to the machine, the run goes on without it, and a delivery that failed over somebody
-  // else's plugin would be retried by Jacurutu forever (ADR 0011, ADR 0040).
-  W_PLUGIN_SKIPPED: {
-    severity: "warning",
-    summary: "An installed plugin was not activated for this run, and the run went on without it.",
-    template: "Plugin '{plugin}' was skipped: {reason}",
-    spec: "docs/adr/0040-the-engine-is-the-plugin-api-version.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because nothing the person wrote is wrong: the new version
-  // opens either way, with whatever the older folder could give it. It exists so that "my
-  // recent files did not come across" has a line in the log that says which file and why
-  // (TYTO-151, ADR 0036).
-  W_IMPORT_SKIPPED: {
-    severity: "warning",
-    summary: "Something in the previous version's data folder could not be brought across to this one.",
-    template: "Could not bring '{item}' across from version {version}: {problem}.",
-    spec: "docs/adr/0036-the-previous-version-is-offered-once.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // The settings file a person edits by hand (TYTO-206, ADR 0073). Reading it never fails:
-  // each of these costs one key, or the keys after a syntax error, and the rest still apply.
-  // The syntax code is an error because it is also why the app refuses to write the file.
-  E_SETTINGS_SYNTAX: {
-    severity: "error",
-    summary: "The settings file is not valid JSON with comments, so the app will not write it.",
-    template: "The settings file cannot be read here: {problem}.",
-    spec: "docs/adr/0073-settings-are-a-jsonc-file-plugins-declare.md",
-    fatal: false,
-    fatality: "Every key that parsed still applies and the rest fall back to their defaults."
-  },
-  W_SETTING_UNKNOWN: {
-    severity: "warning",
-    summary: "The settings file names a key no plugin declares.",
-    template: "Unknown setting '{key}'.",
-    spec: "docs/adr/0073-settings-are-a-jsonc-file-plugins-declare.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_SETTING_UNPREFIXED: {
-    severity: "warning",
-    summary: "The settings file names a plugin's setting without the plugin id in front of it.",
-    template: "Setting '{key}' belongs to plugin '{plugin}' and is written '{expected}'.",
-    spec: "docs/adr/0073-settings-are-a-jsonc-file-plugins-declare.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // An installed plugin's key while that plugin is disabled, failed or refused (TYTO-254): nothing
-  // declares it, but saying "unknown" would send the person looking for a typo that is not there.
-  W_SETTING_PLUGIN_NOT_RUNNING: {
-    severity: "warning",
-    summary: "The settings file names a setting of an installed plugin that is not running.",
-    template: "Setting '{key}' belongs to plugin '{plugin}', which is not running.",
-    spec: "docs/adr/0145-an-installed-plugin-declares-a-setting-as-a-data-form.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_SETTING_INVALID: {
-    severity: "warning",
-    summary: "A setting's value is not one its plugin accepts, so its default applies instead.",
-    template: "Setting '{key}' {problem}; its default applies.",
-    spec: "docs/adr/0073-settings-are-a-jsonc-file-plugins-declare.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A list setting checked one entry at a time (TYTO-301, ADR 0091): a bad entry costs itself.
-  W_SETTING_ENTRY_INVALID: {
-    severity: "warning",
-    summary: "An entry of a list setting is not one its plugin accepts, so it is left out.",
-    template: "Entry {position} of setting '{key}' {problem}; it is left out and the rest apply.",
-    spec: "docs/adr/0091-the-status-bars-content-is-a-setting.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A colour a person chose, which applies, but leaves text under 4.5:1 — a vim badge nothing
-  // reads on, or the bar's own text on its background (TYTO-301, ADR 0091): said with the
-  // number, never refused, because the choice is theirs.
-  W_SETTING_LOW_CONTRAST: {
-    severity: "warning",
-    summary: "A colour setting applies, but the text it leaves reads under 4.5:1.",
-    template: "Setting '{key}' applies, but {what} reads {ratio}:1 in theme '{theme}', under 4.5:1.",
-    spec: "docs/adr/0091-the-status-bars-content-is-a-setting.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // The keybinding table (TYTO-207, ADR 0074). Resolving it never fails: each of these costs
-  // the one entry it names, and every other binding still applies. The syntax code is an
-  // error for the reason `E_SETTINGS_SYNTAX` is one — it is also why the file is not trusted.
-  E_KEYBINDINGS_SYNTAX: {
-    severity: "error",
-    summary: "The keybindings file is not valid JSON with comments.",
-    template: "The keybindings file cannot be read here: {problem}.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "The last file that read without one stays in effect, and the built-in keys stay bound."
-  },
-  W_KEYBINDING_UNKNOWN_COMMAND: {
-    severity: "warning",
-    summary: "A keybinding names a command nothing registers.",
-    template: "Key '{key}' names command '{command}', which nothing registers.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_KEYBINDING_INVALID_KEY: {
-    severity: "warning",
-    summary: "A keybinding is written with a key Tyto cannot bind.",
-    template: "'{key}' cannot be bound: {problem}.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_KEYBINDING_UNKNOWN_CONTEXT: {
-    severity: "warning",
-    summary: "A keybinding's `when` is not one of the contexts Tyto knows.",
-    template: "Key '{key}' has when '{when}', which is not one of {contexts}.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_KEYBINDING_DUPLICATE: {
-    severity: "warning",
-    summary: "The same key is bound twice in the same context by one source.",
-    template: "Key '{key}' is already bound {where} by this source; the first binding applies.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_KEYBINDING_LOCKED: {
-    severity: "warning",
-    summary: "A keybinding would take the command bar's key away, and is refused.",
-    template: "Key '{key}' cannot {problem}: it opens the command bar, the way to every command.",
-    spec: "docs/adr/0074-one-keybinding-table-with-closed-contexts.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // The person's snippets file (TYTO-277, ADR 0082). Reading it never breaks the window: a
-  // syntax error keeps the last file that read, and each warning costs the one entry it names
-  // or, for a flattened choice, only the other options of that one field.
-  E_SNIPPETS_SYNTAX: {
-    severity: "error",
-    summary: "The snippets file is not valid JSON with comments, or not a map of snippets.",
-    template: "The snippets file cannot be read here: {problem}.",
-    spec: "docs/adr/0082-snippets-are-a-jsonc-map-in-vs-codes-shape.md",
-    fatal: false,
-    fatality: "The last file that read without one stays in effect."
-  },
-  W_SNIPPET_INVALID: {
-    severity: "warning",
-    summary: "A snippet is not shaped like { prefix, body, description?, template? }.",
-    template: "Snippet '{name}' is left out: {problem}.",
-    spec: "docs/adr/0082-snippets-are-a-jsonc-map-in-vs-codes-shape.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_SNIPPET_UNSUPPORTED_BODY: {
-    severity: "warning",
-    summary: "A snippet's body uses VS Code syntax Tyto does not translate.",
-    template: "Snippet '{name}' is left out: its body uses {problem}, which Tyto does not support.",
-    spec: "docs/adr/0082-snippets-are-a-jsonc-map-in-vs-codes-shape.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_SNIPPET_CHOICE_FLATTENED: {
-    severity: "warning",
-    summary: "A snippet's choice field is inserted as its first option.",
-    template: "Snippet '{name}' offers field {field} as '{first}' only; the other options are dropped.",
-    spec: "docs/adr/0082-snippets-are-a-jsonc-map-in-vs-codes-shape.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_SNIPPET_UNKNOWN_TEMPLATE: {
-    severity: "warning",
-    summary: "A snippet is limited to a template that is not installed.",
-    template: "Snippet '{name}' is limited to template '{template}', which is not installed.",
-    spec: "docs/adr/0082-snippets-are-a-jsonc-map-in-vs-codes-shape.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A colour theme a plugin ships (TYTO-208, ADR 0077). Reading one never breaks the window: a
-  // file that cannot be used costs the whole theme and the base theme of its kind applies; a
-  // token costs that token, which the base theme fills in.
-  E_THEME_INVALID: {
-    severity: "error",
-    summary: "A colour theme file cannot be read or is not shaped like a theme.",
-    template: "Theme '{theme}' cannot be used: {problem}. The base {kind} theme applies.",
-    spec: "docs/adr/0077-a-colour-theme-is-a-data-file-a-plugin-contributes.md",
-    fatal: false,
-    fatality: "The base theme of the same kind replaces it, so the window keeps every colour."
-  },
-  W_THEME_TOKEN_UNKNOWN: {
-    severity: "warning",
-    summary: "A colour theme sets a name that is not one of the colours Tyto themes.",
-    template: "Theme '{theme}' sets '{token}', which is not a colour a theme can set.",
-    spec: "docs/adr/0077-a-colour-theme-is-a-data-file-a-plugin-contributes.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_THEME_COLOR_INVALID: {
-    severity: "warning",
-    summary: "A colour theme gives a token a value that is not a colour.",
-    template: "Theme '{theme}' gives '{token}' a value that is not a colour: {value}.",
-    spec: "docs/adr/0077-a-colour-theme-is-a-data-file-a-plugin-contributes.md",
-    fatal: false,
-    fatality: "The base theme's colour for that token applies instead."
-  },
-  // The three leftover codes (TYTO-127). Warnings, because the artwork this run made is
-  // exactly what the brief asked for; they exist so that a file deleted from somebody's
-  // delivery, or one that could have been and was not, is never deleted or kept in silence.
-  W_LEFTOVER_REMOVED: {
-    severity: "warning",
-    summary: "A file the previous export wrote into this folder, and this one did not produce, was removed.",
-    template: "Removed '{file}', which the previous export wrote and this one did not produce.",
-    spec: "docs/adr/0054-a-delivery-removes-what-tyto-wrote-there-last-time.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_LEFTOVER_KEPT: {
-    severity: "warning",
-    summary: "A file the previous export listed, and this one did not produce, was left in the folder.",
-    template: "Kept '{file}', which the previous export listed and this one did not produce: {reason}.",
-    spec: "docs/adr/0054-a-delivery-removes-what-tyto-wrote-there-last-time.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A warning and not an error, because the brief is not what is wrong: the kind was chosen
-  // for the queue folder, and the plugin that produced it has since left the machine. The
-  // task renders what is still there, as `W_PLUGIN_SKIPPED` does, rather than failing a folder
-  // meant to run unattended (TYTO-188, ADR 0061).
-  W_QUEUE_KIND_UNAVAILABLE: {
-    severity: "warning",
-    summary: "A file type chosen for the queue folder has no exporter on this machine, so the task was rendered without it.",
-    template: "Did not produce '{kind}': no exporter on this machine produces it any more, so this task produced {produced}.",
-    spec: "docs/adr/0061-the-queue-folder-chooses-its-file-types.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PREVIOUS_RESULT_UNREADABLE: {
-    severity: "warning",
-    summary: "The folder's previous result.json could not be read, so nothing in the folder was removed.",
-    template: "Removed nothing: the previous result.json could not be read ({reason}), so this export cannot tell which files it wrote.",
-    spec: "docs/adr/0054-a-delivery-removes-what-tyto-wrote-there-last-time.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // The project file (TYTO-278, ADR 0112): tolerant per key, like the settings it sits beside.
-  E_PROJECT_SYNTAX: {
-    severity: "error",
-    summary: "A workspace's .tyto/project.json is not valid JSON with comments, or cannot be read.",
-    template: "The project file cannot be read here: {problem}.",
-    spec: "docs/adr/0112-a-workspace-folder-names-its-places-in-one-file.md",
-    fatal: false,
-    fatality: "Every key that parsed still applies, and the brief renders without the rest."
-  },
-  W_PROJECT_KEY_UNKNOWN: {
-    severity: "warning",
-    summary: "The project file names a key Tyto does not know.",
-    template: "Unknown project key '{key}'.",
-    spec: "docs/adr/0112-a-workspace-folder-names-its-places-in-one-file.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PROJECT_KEY_INVALID: {
-    severity: "warning",
-    summary: "A project key's value, or one entry of it, is not accepted, so it is left out.",
-    template: "Project key '{key}' {problem}; it is left out.",
-    spec: "docs/adr/0112-a-workspace-folder-names-its-places-in-one-file.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // ADR 0111's confinement: a restricted source's path keys stay inside it, after realpath.
-  W_PROJECT_PATH_OUTSIDE: {
-    severity: "warning",
-    summary: "A restricted source's folder key leads outside the source, directly or through a link, so it is left out.",
-    template: "Project key '{key}' leads outside this folder ('{path}'), which an untrusted folder may not do; it is left out.",
-    spec: "docs/adr/0111-nothing-a-source-ships-runs-before-the-person-trusts-it.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PROJECT_SECTIONS_WITHHELD: {
-    severity: "warning",
-    summary: "A restricted source's plugin sections are withheld from the plugins that would read them.",
-    template: "The sections for {plugins} are withheld because this folder is not trusted.",
-    spec: "docs/adr/0111-nothing-a-source-ships-runs-before-the-person-trusts-it.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PROJECT_PLUGIN_FILES_WITHHELD: {
-    severity: "warning",
-    summary: "A restricted folder's plugin files are neither fetched nor loaded until the folder is trusted.",
-    template: "The plugin files in {folder} ({files}) were not fetched or loaded because this folder is not trusted.",
-    spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
-    fatal: false,
-    fatality: "Only the project's plugin files are left out; the machine's still load."
-  },
-  // ADR 0114: a missing or refused profile costs the profile alone; the folder opens with its own.
-  W_PROJECT_PROFILE_INVALID: {
-    severity: "warning",
-    summary: "The project file names a work profile in a form Tyto does not accept, so no profile is read.",
-    template: "The work profile '{profile}' {problem}; the folder opens with its own keys alone.",
-    spec: "docs/adr/0114-a-work-profile-is-one-sheet-many-folders-name.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PROJECT_PROFILE_MISSING: {
-    severity: "warning",
-    summary: "The work profile the project file names is not there, so no profile is read.",
-    template: "The work profile '{profile}' was not found at '{path}'; the folder opens with its own keys alone.",
-    spec: "docs/adr/0114-a-work-profile-is-one-sheet-many-folders-name.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  W_PROFILE_NESTED: {
-    severity: "warning",
-    summary: "A work profile names another profile, which is ignored: profiles are one level deep.",
-    template: "A work profile cannot name another ('{profile}'): profiles are one level deep, so it is ignored.",
-    spec: "docs/adr/0114-a-work-profile-is-one-sheet-many-folders-name.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // ADR 0126: an export preset with nowhere to deliver is not run, rather than run somewhere.
-  W_PROJECT_PRESET_NO_FOLDER: {
-    severity: "warning",
-    summary: "An export preset names no folder and no sheet sets 'output', so the preset is left out.",
-    template: "Export preset '{preset}' names no folder and the project sets no 'output'; it is left out.",
-    spec: "docs/adr/0126-an-export-preset-is-a-named-delivery-in-the-project-file.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // ADR 0157: a delivery's name is refused, never rewritten, by ADR 0114's profile rule. A
-  // warning as a refused profile name is: it costs the delivery that was asked for and nothing
-  // else, and the command that asked exits 1 because it made nothing.
-  W_DELIVERY_NAME_INVALID: {
-    severity: "warning",
-    summary: "A delivery name cannot be a folder name, so no delivery is made.",
-    template: "The delivery name '{name}' {problem}; no delivery is made.",
-    spec: "docs/adr/0157-a-delivery-folder-is-one-key-in-the-project-file.md",
-    fatal: false,
-    fatality: "Nothing is written, and nothing else is affected: the name is the only thing refused."
-  },
-  E_DELIVERY_BRIEF_EXISTS: {
-    severity: "error",
-    summary: "A new delivery's brief would replace a brief that is already there.",
-    template: "'{path}' already exists, and a delivery's brief is never overwritten; nothing is written.",
-    spec: "docs/adr/0157-a-delivery-folder-is-one-key-in-the-project-file.md",
-    fatal: true,
-    fatality: "The run that refuses changes nothing: not even the folders the delivery lacks are made."
-  },
-  // ADR 0157 §3, after realpath: a link inside the workspace that lands outside. Its own code and
-  // not `W_PROJECT_PATH_OUTSIDE`, whose text is about an untrusted folder's key: a delivery is
-  // confined whether the folder is trusted or not, and this refuses a run, not a key (TYTO-489).
-  E_DELIVERY_PATH_OUTSIDE: {
-    severity: "error",
-    summary: "A new delivery would be made outside the workspace folder, through a link.",
-    template: "'{path}' leads outside the workspace folder, where a delivery must stay; nothing is written.",
-    spec: "docs/adr/0157-a-delivery-folder-is-one-key-in-the-project-file.md",
-    fatal: true,
-    fatality: "Nothing is written: a delivery is part of the project, trusted or not."
-  },
-  // ADR 0157 §6: `tyto render --delivery` on a brief that is in no delivery. The window never
-  // gets here: its button is disabled for such a brief (TYTO-490).
-  E_BRIEF_NOT_IN_DELIVERY: {
-    severity: "error",
-    summary: "A delivery's export was asked of a brief that is in no delivery.",
-    template: "'{path}' is in no delivery: a delivery's brief is kept in its '{folder}' folder, inside a folder in '{parent}'. Make one with tyto delivery new, or export with --out.",
-    spec: "docs/adr/0157-a-delivery-folder-is-one-key-in-the-project-file.md",
-    fatal: true,
-    fatality: "Nothing is rendered: there is no delivery to write into."
-  },
-  // ADR 0161: a delivery's export copies the brief's images into its `assets/`, and a file of
-  // the same name with other bytes is the person's. A warning, because the artwork is exactly
-  // what the brief asked for; it exists so the copy that did not happen is never silent.
-  W_DELIVERY_ASSET_KEPT: {
-    severity: "warning",
-    summary: "A delivery's assets folder already holds a different file under the name an image would be copied to.",
-    template: "Kept '{path}', which differs from the image '{source}' the brief uses; that image was not copied.",
-    spec: "docs/adr/0161-a-deliverys-export-copies-the-briefs-images-into-its-assets.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  E_TRUST_FILE: {
-    severity: "error",
-    summary: "TYTO_HOME/trust.json cannot be read or written.",
-    template: "The trust file cannot be used: {problem}.",
-    spec: "docs/adr/0111-nothing-a-source-ships-runs-before-the-person-trusts-it.md",
-    fatal: false,
-    fatality: "Every source opens restricted instead, which is what an absent approval means."
-  },
-  // ADR 0128: a recipe is a chain of cells. A recipe that does not parse, or whose parameters
-  // cannot be filled, has no chain at all; a cell that fails costs its own table and the cells
-  // after it, and the cells before it keep theirs.
-  E_RECIPE_SYNTAX: {
-    severity: "error",
-    summary: "A line of a recipe does not match the recipe format.",
-    template: "Recipe syntax error: {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: true,
-    fatality: "A recipe that does not parse has no chain of cells to run."
-  },
-  E_RECIPE_PARAM: {
-    severity: "error",
-    summary: "A recipe's parameter is used without a declaration, or has no value when it runs.",
-    template: "Parameter '{param}' {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: true,
-    fatality: "Every cell may read the parameter, so none of them can run without it."
-  },
-  E_RECIPE_UNKNOWN_VERB: {
-    severity: "error",
-    summary: "A recipe line names a verb that neither Tyto nor an installed plugin contributes.",
-    template: "No verb named '{verb}' is available. Available: {available}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_REGISTRATION: {
-    severity: "error",
-    summary: "A verb or a derivation cannot be registered under the name it was given.",
-    template: "The {kind} '{name}' cannot be registered: {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "Only that one is missing; everything else in the registry still runs."
-  },
-  E_RECIPE_TABLE: {
-    severity: "error",
-    summary: "A table a verb or a derivation answered repeats a column or a key, or holds a value its columns do not allow.",
-    template: "The table from '{origin}' is malformed: {problem}.",
-    spec: "docs/adr/0135-a-plugin-contributes-recipe-verbs-in-a-namespace-it-owns.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // Never a partial table: a source that stopped early would look like an answer (ADR 0128).
-  E_RECIPE_SOURCE: {
-    severity: "error",
-    summary: "A source was cut short, repeated a cursor, or passed a ceiling on its pages or rows.",
-    template: "Source '{verb}' {problem}.",
-    spec: "docs/adr/0135-a-plugin-contributes-recipe-verbs-in-a-namespace-it-owns.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // A plan is what a person confirms before anything is written (ADR 0129), so the host checks
-  // it rather than trusting the plugin to stay inside the writes it declared.
-  E_RECIPE_PLAN: {
-    severity: "error",
-    summary: "An action or a sink planned a write it did not declare, miscounted its plan, or passed a ceiling.",
-    template: "'{verb}' answered a plan that {problem}.",
-    spec: "docs/adr/0135-a-plugin-contributes-recipe-verbs-in-a-namespace-it-owns.md",
-    fatal: false,
-    fatality: "That cell has no plan and the cells after it do not run; earlier cells keep theirs. Nothing is written."
-  },
-  E_RECIPE_VERB: {
-    severity: "error",
-    summary: "A verb a plugin contributes could not do its work, in its own words.",
-    template: "'{verb}' failed: {problem}.",
-    spec: "docs/adr/0135-a-plugin-contributes-recipe-verbs-in-a-namespace-it-owns.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_NO_TABLE: {
-    severity: "error",
-    summary: "A verb that reads a table runs before any cell produced one.",
-    template: "'{verb}' needs a table, and no cell before it produced one.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_ARGUMENTS: {
-    severity: "error",
-    summary: "A recipe verb was given arguments it does not accept.",
-    template: "'{verb}' {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_WHERE: {
-    severity: "error",
-    summary: "A 'where' expression does not match the filter grammar.",
-    template: "Filter error: {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_PATTERN: {
-    severity: "error",
-    summary: "A pattern is empty, longer than 512 characters, or not a valid regular expression.",
-    template: "This pattern cannot be compiled: {problem}.",
-    spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // Refused at compile time, before any cell is read: a pattern that may take exponential time
-  // is not one a colleague's shared recipe or rules file gets to try (ADR 0136).
-  E_RECIPE_PATTERN_UNSAFE: {
-    severity: "error",
-    summary: "A pattern uses a backreference, a lookaround, a nested quantifier or another construct the pattern guard refuses.",
-    template: "The pattern guard refuses {construct}: {problem}.",
-    spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // A missing column aborts rather than returning no rows: an empty result must never pass for
-  // an answer, the rule Buraqueira's `flow.py` learned from a search that answered 200 and empty.
-  E_RECIPE_UNKNOWN_COLUMN: {
-    severity: "error",
-    summary: "A recipe verb names a column the table does not have.",
-    template: "No column named '{column}' in this table. Available: {available}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_ALIAS: {
-    severity: "error",
-    summary: "A column alias cannot be used as it is defined.",
-    template: "Alias '{alias}' {problem}.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_DERIVATION: {
-    severity: "error",
-    summary: "A 'derive' names a derivation nobody registered, lacks a column it requires, or breaks its promise.",
-    template: "Derivation '{name}' {problem}.",
-    spec: "docs/adr/0133-join-pairs-rows-on-a-column-a-derivation-produces.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_RUN: {
-    severity: "error",
-    summary: "A 'run' names a recipe that is not found, already running, or ends without a table.",
-    template: "'run {recipe}' {problem}.",
-    spec: "docs/adr/0133-join-pairs-rows-on-a-column-a-derivation-produces.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // Never an empty store: a host without state would read every run as the first (ADR 0140).
-  E_RECIPE_STATE: {
-    severity: "error",
-    summary: "A 'last', 'remember' or 'recall' runs where the host keeps no recipe state, or the host cannot read it.",
-    template: "Recipe state '{store}' {problem}.",
-    spec: "docs/adr/0140-a-recipe-remembers-applied-rows-in-machine-local-state.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // A data reference names configuration beside the recipe (ADR 0136, ADR 0137). Four codes, so
-  // a handler can tell a file that is not there from one that is withheld, broken or misshapen.
-  E_RECIPE_DATA: {
-    severity: "error",
-    summary: "A data reference is malformed, names a file that is missing, too large or outside the workspace, or the host reads no data files.",
-    template: "Data '{reference}' {problem}.",
-    spec: "docs/adr/0137-a-recipe-reads-its-data-files-through-a-confined-port.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // Withheld, not missing: the file is there and trusting the folder reads it (ADR 0111).
-  E_RECIPE_DATA_RESTRICTED: {
-    severity: "error",
-    summary: "A data reference names a file in a workspace the person has not trusted.",
-    template: "Data file '{reference}' is not read in a restricted workspace; trust the folder to read it.",
-    spec: "docs/adr/0137-a-recipe-reads-its-data-files-through-a-confined-port.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_DATA_SYNTAX: {
-    severity: "error",
-    summary: "A data file is not valid JSON with comments.",
-    template: "Data file '{reference}' cannot be read as JSON: {problem}.",
-    spec: "docs/adr/0137-a-recipe-reads-its-data-files-through-a-confined-port.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_DATA_SHAPE: {
-    severity: "error",
-    summary: "A data reference's pointer reaches nothing, or the slice it reaches is not what the verb reads.",
-    template: "Data '{reference}' does not hold what this verb reads: {problem}.",
-    spec: "docs/adr/0137-a-recipe-reads-its-data-files-through-a-confined-port.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // A rules table is checked whole before any row is read, so a mistake in its last entry is
-  // found on a table whose rows never reach that entry (ADR 0136).
-  E_RECIPE_RULES: {
-    severity: "error",
-    summary: "A 'rules' table cannot be read, sets a column 'into=' does not name, or has an entry no row can reach.",
-    template: "The rules table {problem}.",
-    spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // A rewrite list is checked whole before any row is read, as a rules table is (ADR 0136).
-  E_RECIPE_REWRITE: {
-    severity: "error",
-    summary: "A 'rewrite' list cannot be read, or a replacement names a group its pattern lacks or writes a '$' that means nothing.",
-    template: "The rewrite list {problem}.",
-    spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  E_RECIPE_TEMPLATE: {
-    severity: "error",
-    summary: "A 'compose' or 'rules' template has an unclosed placeholder, a stray brace or a filter that does not exist.",
-    template: "Template '{template}' {problem}.",
-    spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
-    fatal: false,
-    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs."
-  },
-  // Zero rows is a legitimate answer, but it cannot be told from a misspelt value if it is silent.
-  W_RECIPE_WHERE_EMPTY: {
-    severity: "warning",
-    summary: "A 'where' kept no row of a table that had rows.",
-    template: "No row passed '{expression}'. Values compare without case or accents; '~' means contains and '=' means equal.",
-    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // An ambiguous key never pairs; the rows say so, and this keeps one among a hundred visible.
-  W_RECIPE_JOIN_AMBIGUOUS: {
-    severity: "warning",
-    summary: "A 'join' left rows unpaired because their key answered to more than one row.",
-    template: "{count} row(s) of join '{prefix}' have more than one candidate and stay unpaired: {rows}.",
-    spec: "docs/adr/0133-join-pairs-rows-on-a-column-a-derivation-produces.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // An unread stamp is an empty age, which 'where age >= 72' drops; one count keeps it visible.
-  W_RECIPE_AGE_UNREAD: {
-    severity: "warning",
-    summary: "An 'age' found cells that none of its formats reads, and left their age empty.",
-    template: "{count} cell(s) of '{column}' match none of the formats '{format}' and have no age.",
-    spec: "docs/adr/0139-a-recipe-run-reads-time-from-an-injected-clock.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A child whose parent is not in the table counts toward no parent; a recipe that forgot to
-  // fetch the parents would otherwise read as parents with no children.
-  W_RECIPE_ROLLUP_ORPHANS: {
-    severity: "warning",
-    summary: "A 'rollup' found rows whose parent is not a row of the table, and counted them nowhere.",
-    template: "{count} row(s) name a parent in '{column}' that the table lacks: {parents}.",
-    spec: "docs/adr/0140-a-recipe-remembers-applied-rows-in-machine-local-state.md",
-    fatal: false,
-    fatality: "A warning never replaces a value (ADR 0013)."
-  },
-  // A vim contribution names operations the editor implements (TYTO-417, ADR 0141). One that
-  // cannot be applied is left out whole, so half of a plugin's keys never land.
-  E_VIM_CONTRIBUTION: {
-    severity: "error",
-    summary: "A vim contribution names an operation the editor does not have, or a bad mapping.",
-    template: "Vim contribution '{id}' was not applied: {problem}.",
-    spec: "docs/adr/0141-a-plugin-contributes-vim-mappings-as-data.md",
-    fatal: false,
-    fatality: "Only that contribution is left out; vim and every other contribution keep working."
-  }
-};
-var diagnosticCodeList = Object.keys(diagnosticCodes);
-var PLACEHOLDER = /\{([a-zA-Z][a-zA-Z0-9]*)\}/g;
-function formatDiagnosticMessage(code, params) {
-  const { template } = diagnosticCodes[code];
-  const supplied = params;
-  return template.replace(PLACEHOLDER, (_whole, name) => {
-    const value = supplied[name];
-    if (value === void 0) {
-      throw new TypeError(`Diagnostic ${code} is missing the parameter '${name}'.`);
-    }
-    return String(value);
-  });
-}
-function sourceRange(start, end) {
-  if (!Number.isInteger(start) || !Number.isInteger(end)) {
-    throw new TypeError(`Range offsets must be integers, received (${start}, ${end}).`);
-  }
-  if (start < 0) {
-    throw new RangeError(`Range start must not be negative, received ${start}.`);
-  }
-  if (end < start) {
-    throw new RangeError(`Range end ${end} must not precede start ${start}.`);
-  }
-  return { start, end };
-}
-function unionRanges(a, b) {
-  return sourceRange(Math.min(a.start, b.start), Math.max(a.end, b.end));
-}
-function diagnostic(code, params, options = {}) {
-  const base3 = {
-    severity: diagnosticCodes[code].severity,
-    code,
-    message: formatDiagnosticMessage(code, params)
-  };
-  return {
-    ...base3,
-    ...options.range !== void 0 ? { range: options.range } : {},
-    ...options.hint !== void 0 ? { hint: options.hint } : {}
-  };
-}
-var origins = /* @__PURE__ */ new WeakMap();
-function rememberOrigin(run22, range) {
-  origins.set(run22, range);
-}
-function originOf(run22) {
-  return origins.get(run22);
-}
-var unitInterval = external_exports.number().min(0).max(1);
-var finite = external_exports.number().finite();
-var nonNegative = external_exports.number().finite().nonnegative();
-var sizeSchema = external_exports.strictObject({ w: nonNegative, h: nonNegative });
-var unitPointSchema = external_exports.strictObject({ x: unitInterval, y: unitInterval });
-var colorSchema = external_exports.strictObject({
-  r: external_exports.number().int().min(0).max(255),
-  g: external_exports.number().int().min(0).max(255),
-  b: external_exports.number().int().min(0).max(255),
-  a: unitInterval.default(1)
-});
-var blendModes = [
-  "normal",
-  "multiply",
-  "screen",
-  "overlay",
-  "darken",
-  "lighten",
-  "color-dodge",
-  "color-burn",
-  "soft-light",
-  "hard-light",
-  "difference",
-  "exclusion",
-  "hue",
-  "saturation",
-  "color",
-  "luminosity"
-];
-var blendModeSchema = external_exports.enum(blendModes);
-var fontRefSchema = external_exports.strictObject({
-  family: external_exports.string().min(1),
-  /**
-   * `bundled` fonts ship with Tyto; `file` ones come from the brief's folder; `system` ones
-   * are installed on the machine that renders, and a host draws a bundled face in their
-   * place, with a warning, where they are not (ADR 0037).
-   */
-  source: external_exports.enum(["bundled", "file", "system"]),
-  path: external_exports.string().min(1).optional()
-});
-var assetRefSchema = external_exports.strictObject({
-  id: external_exports.string().min(1),
-  source: external_exports.enum(["file", "url", "inline"]),
-  path: external_exports.string().min(1).optional(),
-  /** Content hash: same brief plus same assets must produce the same bytes. */
-  hash: external_exports.string().min(1),
-  /**
-   * The picture's own width and height in pixels, as the host read them off its header
-   * when it found the file (ADR 0158). A template sizes a frame to it, since it cannot open
-   * the file itself. Absent on a hand-built ref and on a header nothing parsed: an answer
-   * the host guessed would place the picture with confidence, in the wrong frame.
-   */
-  size: sizeSchema.optional()
-});
-var fitSchema = external_exports.enum(["cover", "contain", "fill"]);
-var gradientStopSchema = external_exports.strictObject({
-  offset: unitInterval,
-  color: colorSchema
-});
-var gradientStops = external_exports.array(gradientStopSchema).min(2);
-var paintSchema = external_exports.discriminatedUnion("kind", [
-  external_exports.strictObject({ kind: external_exports.literal("solid"), color: colorSchema }),
-  external_exports.strictObject({
-    kind: external_exports.literal("linear-gradient"),
-    /** Degrees clockwise from "up", the way a designer states a gradient angle. */
-    angle: finite,
-    stops: gradientStops
-  }),
-  external_exports.strictObject({
-    kind: external_exports.literal("radial-gradient"),
-    center: unitPointSchema,
-    radius: nonNegative,
-    stops: gradientStops
-  }),
-  external_exports.strictObject({ kind: external_exports.literal("image"), asset: assetRefSchema, fit: fitSchema })
-]);
-var strokeSchema = external_exports.strictObject({
-  paint: paintSchema,
-  width: nonNegative,
-  align: external_exports.enum(["inside", "center", "outside"]).default("center")
-});
-var effectSchema = external_exports.discriminatedUnion("kind", [
-  external_exports.strictObject({
-    kind: external_exports.literal("shadow"),
-    x: finite,
-    y: finite,
-    /**
-     * The Gaussian's standard deviation, which is how CSS `drop-shadow()` reads its length
-     * and what SVG's `stdDeviation` is — every exporter writes it unconverted (ADR 0156).
-     */
-    blur: nonNegative,
-    spread: finite,
-    color: colorSchema
-  }),
-  /** `radius` is a standard deviation too, as CSS `blur()` reads it. */
-  external_exports.strictObject({ kind: external_exports.literal("blur"), radius: nonNegative }),
-  external_exports.strictObject({ kind: external_exports.literal("background-blur"), radius: nonNegative })
-]);
-var transformSchema = external_exports.strictObject({
-  x: finite.default(0),
-  y: finite.default(0),
-  /** Degrees, clockwise. */
-  rotation: finite.default(0),
-  scaleX: finite.default(1),
-  scaleY: finite.default(1),
-  /** Origin of rotation and scale, normalised inside the node's own box. */
-  anchor: unitPointSchema.default({ x: 0, y: 0 })
-});
-var identityTransform = {
-  x: 0,
-  y: 0,
-  rotation: 0,
-  scaleX: 1,
-  scaleY: 1,
-  anchor: { x: 0, y: 0 }
-};
-var maskRefSchema = external_exports.strictObject({
-  nodeId: external_exports.string().min(1),
-  mode: external_exports.enum(["alpha", "luminance"])
-});
-var TemplateError = class extends Error {
-  diagnostic;
-  constructor(field, problem) {
-    const built = diagnostic("E_TEMPLATE_VALUE", { field, problem });
-    super(built.message);
-    this.name = "TemplateError";
-    this.diagnostic = built;
-  }
-};
-var noBrandKit = Object.freeze({});
-var HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-function expandShorthand(digits) {
-  return digits.length <= 4 ? [...digits].map((digit) => digit + digit).join("") : digits;
-}
-function channel(hex3, index) {
-  return Number.parseInt(hex3.slice(index * 2, index * 2 + 2), 16);
-}
-function color(value) {
-  if (typeof value !== "string") {
-    return { r: value.r, g: value.g, b: value.b, a: value.a ?? 1 };
-  }
-  if (!HEX.test(value)) {
-    throw new TemplateError("color", `'${value}' is not a hex colour such as '#ff5900'`);
-  }
-  const digits = expandShorthand(value.slice(1));
-  return {
-    r: channel(digits, 0),
-    g: channel(digits, 1),
-    b: channel(digits, 2),
-    a: digits.length === 8 ? Math.round(channel(digits, 3) / 255 * 1e3) / 1e3 : 1
-  };
-}
-function solid(value) {
-  return { kind: "solid", color: color(value) };
-}
-function paintOf(value) {
-  return typeof value === "object" && "kind" in value ? value : solid(value);
-}
-function run(text2, options) {
-  return {
-    kind: "text",
-    text: text2,
-    font: options.font,
-    size: options.size,
-    weight: options.weight ?? 400,
-    style: options.style ?? "normal",
-    color: paintOf(options.color),
-    ...options.decoration !== void 0 ? { decoration: options.decoration } : {}
-  };
-}
-function lineBreak() {
-  return { kind: "break" };
-}
-var BOLD = 700;
-var sameColor = (a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a;
-var sameStops = (a, b) => a.length === b.length && a.every((stop22, index) => {
-  const other = b[index];
-  return other !== void 0 && stop22.offset === other.offset && sameColor(stop22.color, other.color);
-});
-function samePaint(a, b) {
-  if (a.kind !== b.kind) return false;
-  switch (a.kind) {
-    case "solid":
-      return b.kind === "solid" && sameColor(a.color, b.color);
-    case "linear-gradient":
-      return b.kind === "linear-gradient" && a.angle === b.angle && sameStops(a.stops, b.stops);
-    case "radial-gradient":
-      return b.kind === "radial-gradient" && a.center.x === b.center.x && a.center.y === b.center.y && a.radius === b.radius && sameStops(a.stops, b.stops);
-    case "image":
-      return b.kind === "image" && a.fit === b.fit && a.asset.id === b.asset.id && a.asset.source === b.asset.source && a.asset.path === b.asset.path && a.asset.hash === b.asset.hash;
-  }
-}
-var sameFont = (a, b) => a.family === b.family && a.source === b.source && a.path === b.path;
-var sameStyle = (a, b) => a.size === b.size && a.weight === b.weight && a.style === b.style && a.decoration === b.decoration && sameFont(a.font, b.font) && samePaint(a.color, b.color);
-function absorbedByPrevious(target, produced, range) {
-  const previous = target[target.length - 1];
-  if (previous === void 0 || previous.kind !== "text") return false;
-  if (!sameStyle(previous, produced)) return false;
-  const merged = { ...previous, text: previous.text + produced.text };
-  const origin = originOf(previous);
-  rememberOrigin(merged, origin === void 0 ? range : unionRanges(origin, range));
-  target[target.length - 1] = merged;
-  return true;
-}
-function styled(inline, style2, options) {
-  switch (inline.kind) {
-    case "bold":
-      return typeof options.bold === "object" ? { ...style2, weight: BOLD, ...options.bold } : { ...style2, weight: options.bold ?? BOLD };
-    case "italic":
-      return { ...style2, ...options.italic, style: "italic" };
-    case "mark":
-      return { ...style2, ...options.mark?.(inline.key, inline.value) };
-    default:
-      return style2;
-  }
-}
-function append(target, text2, style2, options) {
-  for (const inline of text2) {
-    switch (inline.kind) {
-      case "text": {
-        if (inline.value === "") break;
-        const produced = run(inline.value, style2);
-        if (absorbedByPrevious(target, produced, inline.range)) break;
-        rememberOrigin(produced, inline.range);
-        target.push(produced);
-        break;
-      }
-      case "break":
-        target.push({ kind: "break" });
-        break;
-      default:
-        append(target, inline.children, styled(inline, style2, options), options);
-        break;
-    }
-  }
-}
-function runsOf(text2, base3, options = {}) {
-  const runs = [];
-  append(runs, text2, base3, options);
-  return runs;
-}
-function numberValue(context, name, fallback) {
-  const value = context.values?.[name];
-  return typeof value === "number" ? value : fallback;
-}
-function colorValue(context, name, fallback) {
-  const value = context.values?.[name];
-  return typeof value === "string" ? value : fallback;
-}
-function imageValue(context, name) {
-  const value = context.values?.[name];
-  return typeof value === "object" && "hash" in value ? value : void 0;
-}
-
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.39.0/node_modules/@rafaelsilvalor/tyto-core/dist/template.js
-function base(options) {
-  return {
-    transform: { ...identityTransform, ...options.transform },
-    opacity: options.opacity ?? 1,
-    blend: options.blend ?? "normal",
-    visible: options.visible ?? true,
-    clip: options.clip ?? false,
-    effects: [...options.effects ?? []],
-    // Spread rather than assigned undefined: exactOptionalPropertyTypes tells an absent
-    // key apart from an undefined one, and a strictObject rejects the latter.
-    ...options.name !== void 0 ? { name: options.name } : {},
-    ...options.mask !== void 0 ? { mask: options.mask } : {}
-  };
-}
-function rect(options) {
-  const radius = options.radius ?? 0;
-  return {
-    ...base(options),
-    kind: "rect",
-    size: options.size,
-    radius: typeof radius === "number" ? [radius, radius, radius, radius] : [...radius],
-    ...options.id !== void 0 ? { id: options.id } : {},
-    ...options.fill !== void 0 ? { fill: options.fill } : {},
-    ...options.stroke !== void 0 ? { stroke: options.stroke } : {}
-  };
-}
-function text(options) {
-  return {
-    ...base(options),
-    kind: "text",
-    runs: [...options.runs],
-    box: {
-      ...options.box?.w !== void 0 ? { w: options.box.w } : {},
-      ...options.box?.h !== void 0 ? { h: options.box.h } : {}
-    },
-    align: options.align ?? "left",
-    valign: options.valign ?? "top",
-    lineHeight: options.lineHeight ?? 1.2,
-    letterSpacing: options.letterSpacing ?? 0,
-    // `clip` is the only overflow that needs no measurement, so it is what a template
-    // that says nothing gets; `shrink` and `grow` are choices, and E4.5 acts on them.
-    overflow: options.overflow ?? "clip",
-    ...options.id !== void 0 ? { id: options.id } : {}
-  };
-}
-function image(options) {
-  return {
-    ...base(options),
-    kind: "image",
-    asset: options.asset,
-    size: options.size,
-    fit: options.fit ?? "cover",
-    position: options.position ?? { x: 0.5, y: 0.5 },
-    ...options.id !== void 0 ? { id: options.id } : {}
-  };
-}
-function vector(options) {
-  return {
-    ...base(options),
-    kind: "vector",
-    geometry: options.geometry,
-    size: options.size,
-    ...options.id !== void 0 ? { id: options.id } : {},
-    ...options.fill !== void 0 ? { fill: options.fill } : {},
-    ...options.stroke !== void 0 ? { stroke: options.stroke } : {}
-  };
-}
-function group(options) {
-  return {
-    ...base(options),
-    kind: "group",
-    children: [...options.children],
-    ...options.id !== void 0 ? { id: options.id } : {}
-  };
-}
-function assignIds(drafts, prefix) {
-  return drafts.map((draft, index) => {
-    const id = draft.id ?? `${prefix}.${index}`;
-    switch (draft.kind) {
-      case "group":
-        return { ...draft, id, children: assignIds(draft.children, id) };
-      case "rect":
-        return { ...draft, id };
-      case "text":
-        return { ...draft, id };
-      case "image":
-        return { ...draft, id };
-      case "vector":
-        return { ...draft, id };
-    }
-  });
-}
-function frame(options) {
-  return {
-    format: options.format,
-    size: options.size,
-    children: assignIds(options.children ?? [], options.idPrefix ?? options.format),
-    ...options.background !== void 0 ? { background: options.background } : {}
-  };
-}
-
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.5.9/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-YTKBFVV6.js
-var PAPER = "#fbfbfb";
-var INK = "#000000";
-var ZEBRA = "#f2f2f4";
-var ON_ACCENT = "#ffffff";
-var SIGNATURE_INK = "#8c8ca1";
-var TITLE = {
-  /** Line box, as a multiple of the size: tight, as display type is set. */
-  lineHeight: 1.06,
-  tracking: -0.01,
-  /** The most lines the title may take before it is set smaller. */
-  maxLines: 3,
-  /** The smallest the title is set, whatever the table needs. */
-  floor: 40,
-  ceiling: 96,
-  /**
-   * The title is never more than this many times the body size, so a short table does not
-   * sit under a shouting title. 62 over 22: the approved table art.
-   */
-  perBody: 62 / 22,
-  /** Room on each side of the title, inside the page's. */
-  inset: 20,
-  /** Title → table. */
-  gap: 20
-};
-var BODY = {
-  /** The readable floor: below it the table is drawn anyway, and reported (ADR 0058). */
-  floor: 16,
-  ceiling: 34,
-  /** The fit loop's resolution, in px. */
-  step: 0.5,
-  lineHeight: 1.25,
-  /** Padding inside a cell, in em. */
-  padding: { block: 0.8, inline: 0.5 }
-};
-var OPTICAL_DROP = 0.15;
-
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.44.0/node_modules/@rafaelsilvalor/tyto-core/dist/chunk-SOXUYDUT.js
-var SVG_MARKUP_WAY_OUT2 = "only flat shapes painted by presentation attributes are inlined: draw it as a contour (a vector of kind 'path'), place it as a PNG, or re-export it from Illustrator with Styling set to Presentation Attributes";
-var diagnosticCodes2 = {
-  // Three syntax codes and not one, because fatality is a property of the code and one
-  // code cannot be fatal in one place and not in another (ADR 0025). A broken line in the
-  // body costs that directive; a frontmatter that does not parse costs the template
-  // binding, which is everything; a template that does not parse costs every artwork drawn
-  // through it.
-  E_SYNTAX: {
-    severity: "error",
-    summary: "A line of the brief body does not match the grammar.",
-    template: "Syntax error: {problem}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "One directive is unreadable and the parser already recovered the others."
-  },
-  E_FRONTMATTER_SYNTAX: {
-    severity: "error",
-    summary: "A brief's frontmatter is not valid YAML, or is not a mapping.",
-    template: "Frontmatter error: {problem}.",
-    spec: "docs/brief-language.md",
-    fatal: true,
-    fatality: "The frontmatter is where the template is named, so one that does not parse leaves nothing to render against."
-  },
-  E_NO_TEMPLATE: {
-    severity: "error",
-    summary: "A brief names no template and none was supplied on the command line.",
-    template: "The brief sets no 'template' in its frontmatter, and none was given.",
-    spec: "docs/brief-language.md",
-    fatal: true,
-    fatality: "There is no template to render against, so no frame can exist."
-  },
-  E_UNKNOWN_TEMPLATE: {
-    severity: "error",
-    summary: "A brief names a template the registry does not have.",
-    template: "No template named '{template}'. Available: {available}.",
-    spec: "docs/brief-language.md",
-    fatal: true,
-    fatality: "The same, one step later: a name the registry cannot answer is no template at all."
-  },
-  E_UNKNOWN_FORMAT: {
-    severity: "error",
-    summary: "A requested format is not one the chosen template renders.",
-    template: "Format '{format}' is not rendered by template '{template}'. It renders: {declared}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The formats the template does render are unaffected."
-  },
-  E_FORMAT_NOT_IN_BRIEF: {
-    severity: "error",
-    summary: "A run asks for a format the template renders but the brief does not list.",
-    template: "Format '{format}' was requested, but the brief lists only: {listed}. Add it to the brief's 'formats' to render it.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The brief's own formats that were also requested still render."
-  },
-  E_BAD_SLOT_VALUE: {
-    severity: "error",
-    summary: "A slot is set to something the manifest does not allow for it.",
-    template: "Slot '{slot}' is invalid: {problem}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The value of one slot; it stays unset and the rest of the artwork is drawn anyway."
-  },
-  E_UNKNOWN_SLOT: {
-    severity: "error",
-    summary: "A directive names a slot the template manifest does not declare.",
-    template: "Unknown slot '{slot}'. Template '{template}' declares: {declared}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The slot does not exist, and the ones that do are unaffected."
-  },
-  E_UNKNOWN_DIRECTIVE: {
-    severity: "error",
-    summary: "A directive matches no template slot and no installed plugin.",
-    template: "Unknown directive '::{directive}'. No template slot or installed plugin provides it.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The same: a directive nothing claims contributes nothing to skip."
-  },
-  E_DIRECTIVE_ARGUMENT: {
-    severity: "error",
-    summary: "A plugin directive was written without an argument it needs, or with one it cannot use.",
-    template: "Directive '::{directive}' {problem}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The directive contributes nothing; every other directive is resolved."
-  },
-  E_MISSING_REQUIRED_SLOT: {
-    severity: "error",
-    summary: "The manifest marks a slot as required and the brief leaves it unset.",
-    template: "Template '{template}' requires slot '{slot}', which the brief does not set.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "The artwork renders with a hole, and since ADR 0035 the hole is drawn: `compile` stamps every frame built from a brief that left a required slot unset, so the gap is in the exported bytes and not only in the problems panel."
-  },
-  E_BAD_ADJUSTMENT: {
-    severity: "error",
-    summary: "An adjustment is not declared for the slot it is applied to.",
-    template: "Adjustment '{adjustment}' is not declared for slot '{slot}'. Declared: {declared}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "One adjustment on one slot; the slot keeps the adjustments that are declared."
-  },
-  E_ASSET_NOT_FOUND: {
-    severity: "error",
-    summary: "An asset path in the brief does not resolve to a file.",
-    template: "Asset '{path}' was not found in {searched}.",
-    spec: "docs/brief-language.md",
-    fatal: false,
-    fatality: "One image the brief named. The slot stays unset, so the scene never references bytes nobody can supply."
-  },
-  E_ASSET_SOURCE_FAILED: {
-    severity: "error",
-    summary: "A plugin that serves an asset scheme could not supply the asset the brief named.",
-    template: "Asset '{path}' could not be fetched from plugin '{plugin}': {problem}.",
-    spec: "docs/adr/0117-a-plugin-source-is-fetched-once-and-read-from-a-cache.md",
-    fatal: false,
-    fatality: "One image the brief named, exactly as a missing file is: the slot stays unset and the rest of the brief renders."
-  },
-  E_UNSUPPORTED_CSS: {
-    severity: "error",
-    summary: "A template uses a CSS property outside the accepted set.",
-    template: "CSS property '{property}' is not supported by the template language. Try '{suggestion}'.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_UNSUPPORTED_TAG: {
-    severity: "error",
-    summary: "A template uses a tag the template language does not define.",
-    template: "Tag '<{tag}>' is not part of the template language. Try '{suggestion}'.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_UNSUPPORTED_ATTRIBUTE: {
-    severity: "error",
-    summary: "A template uses an attribute the tag it sits on does not accept.",
-    template: "Attribute '{attribute}' is not accepted on '<{tag}>'. Try '{suggestion}'.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_TEMPLATE_SYNTAX: {
-    severity: "error",
-    summary: "A template.html does not match the template grammar.",
-    template: "Template syntax error: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_TEMPLATE_MARKUP: {
-    severity: "error",
-    summary: "A template.html parses but does not describe a scene the compiler can build.",
-    template: "Template markup is invalid: {problem}.",
-    spec: "docs/template-authoring.md",
-    fatal: true,
-    fatality: "The template is what every artwork is drawn through, so a broken one breaks all of them rather than one slot."
-  },
-  E_PERMISSION: {
-    severity: "error",
-    summary: "A plugin called a capability it was not granted at install time.",
-    template: "Plugin '{plugin}' called '{capability}' without that permission being granted at install time.",
-    spec: "docs/plugin-api.md",
-    // Not fatal since TYTO-48 enforces it: the refusal is one call's, and a plugin that
-    // hands it back from `exportFrame` costs that frame and not the whole render (ADR 0025).
-    fatal: false,
-    fatality: "One call is refused; what the plugin does with the refusal is the plugin's."
-  },
-  // Two codes and not one, the way the template manifest already splits them: "this file
-  // is not JSON" and "this JSON is not a manifest" are different problems for whoever has
-  // to fix it, and only the second has a field to point at. `{path}` is a file path in the
-  // first and a field path in the second, which is the same split E_MANIFEST_* makes.
-  E_PLUGIN_MANIFEST_SYNTAX: {
-    severity: "error",
-    summary: "A tyto-plugin.json is not valid JSON.",
-    template: "Plugin manifest '{path}' is not valid JSON: {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_MANIFEST_SHAPE: {
-    severity: "error",
-    summary: "A tyto-plugin.json parses as JSON but does not match the plugin manifest schema.",
-    template: "Plugin manifest is invalid at '{path}': {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // The loader's codes (TYTO-47). Errors, because each one refuses a plugin somebody asked
-  // for by name — at install, at enable, or when the host activates it. A render that meets
-  // one does not report it as itself: it reports W_PLUGIN_SKIPPED, because the brief is not
-  // what is wrong and the run goes on without that plugin (ADR 0040).
-  E_PLUGIN_ENGINE: {
-    severity: "error",
-    summary: "A plugin's engine range is not satisfied by this host's plugin API.",
-    template: "Plugin '{plugin}' needs plugin API {range}, and this Tyto provides plugin API {version}.",
-    spec: "docs/adr/0040-the-engine-is-the-plugin-api-version.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_DUPLICATE: {
-    severity: "error",
-    summary: "A plugin registered a contribution id that another plugin already holds.",
-    template: "Plugin '{plugin}' was refused: extension point '{point}' already has '{id}', registered by plugin '{owner}'.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_NAME_TAKEN: {
-    severity: "error",
-    summary: "A plugin has the same name as one already installed or built in.",
-    template: "A plugin named '{plugin}' is already here ({origin}).",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // A namespace is a plugin's whole share of the recipe vocabulary, so two plugins cannot both
-  // own `jira.*`; the one loaded first keeps it.
-  E_PLUGIN_NAMESPACE_TAKEN: {
-    severity: "error",
-    summary: "A plugin declares a recipe namespace another loaded plugin already owns.",
-    template: "Plugin '{plugin}' was refused: the namespace '{namespace}' belongs to plugin '{owner}'.",
-    spec: "docs/adr/0135-a-plugin-contributes-recipe-verbs-in-a-namespace-it-owns.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_NOT_INSTALLED: {
-    severity: "error",
-    summary: "A plugin command named a plugin that is not installed.",
-    template: "No installed plugin is named '{plugin}'.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_ACTIVATE: {
-    severity: "error",
-    summary: "A plugin's code could not be loaded, or its activate function failed.",
-    template: "Plugin '{plugin}' failed to activate: {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_PERMISSIONS_CHANGED: {
-    severity: "error",
-    summary: "An installed plugin now asks for permissions nobody approved when it was installed.",
-    template: "Plugin '{plugin}' asks for {permissions}, which were not approved when it was installed. Install it again to approve them.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_STATE: {
-    severity: "error",
-    summary: "The file recording which plugins were installed and approved cannot be read.",
-    template: "Plugin state '{path}' cannot be read: {problem}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_EXPORTER_KIND: {
-    severity: "error",
-    summary: "A plugin registered a rasterized exporter declaring a kind no rasterizer encodes.",
-    template: "Plugin '{plugin}' registers exporter '{exporter}' as rasterized for '{kind}', and a rasterizer encodes only {encodable}.",
-    spec: "docs/plugin-api.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // A pack's folder is a string the plugin's own thread wrote, so where it points is checked
-  // on the host's side before anything is searched there (ADR 0046).
-  E_PLUGIN_PACK_DIRECTORY: {
-    severity: "error",
-    summary: "A plugin's template pack names a folder outside the plugin's installed folder.",
-    template: "Plugin '{plugin}' contributes template pack folder '{directory}', and {problem}.",
-    spec: "docs/adr/0046-an-installed-template-pack-is-markup-inside-its-plugin.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // Narrowed by ADR 0048: a code template may come from a plugin, built into its dist/ and
-  // run in its process. What is still refused is a folder that would be run any other way.
-  E_PLUGIN_PACK_CODE: {
-    severity: "error",
-    summary: "A plugin's template pack holds a template that could not run in the plugin's process.",
-    template: "Plugin '{plugin}' contributes template '{template}', and {problem}.",
-    spec: "docs/adr/0048-an-installed-code-template-runs-in-its-plugin.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // Every failure an installed code template can have arrives as a value from the plugin's
-  // process, and this names which template it cost (ADR 0048).
-  E_PLUGIN_TEMPLATE: {
-    severity: "error",
-    summary: "An installed code template did not answer a frame from its plugin's process.",
-    template: "Plugin '{plugin}' did not build a frame of template '{template}': {problem}",
-    spec: "docs/adr/0048-an-installed-code-template-runs-in-its-plugin.md",
-    fatal: false,
-    fatality: "It costs the frame the call was for; the frames that did arrive are drawn (ADR 0025)."
-  },
-  // The host reads an image's bytes on a frame's behalf, so a frame may only name pictures
-  // the host sent it; a path the plugin wrote itself could be any file on the disk (TYTO-479).
-  E_PLUGIN_TEMPLATE_ASSET: {
-    severity: "error",
-    summary: "An installed code template drew a picture Tyto did not hand it.",
-    template: "Plugin '{plugin}' drew asset '{asset}' in template '{template}', which is not in the template's folder or the brief it was given.",
-    spec: "docs/adr/0062-a-code-template-reads-its-own-folder-through-its-context.md",
-    fatal: false,
-    fatality: "It costs the frame the call was for; the frames that did arrive are drawn (ADR 0025)."
-  },
-  // A link is copied as its target when it lands inside the plugin folder; any other is
-  // refused before anything is written, rather than failing the copy halfway (TYTO-50). The
-  // same check runs again at load, because the permission model follows a link out of the
-  // folder it granted (ADR 0049).
-  E_PLUGIN_LINK: {
-    severity: "error",
-    summary: "A plugin folder holds a link that leads outside it, or nowhere.",
-    template: "Plugin folder '{source}' holds '{file}', a link that {problem}. A plugin may hold its own files only: replace the link with the file it points to.",
-    spec: "docs/plugin-authoring.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  // The canary a plugin's process runs before the plugin's code is imported read a file it
-  // should not have been able to read, or never said what it found (ADR 0049).
-  E_PLUGIN_SANDBOX: {
-    severity: "error",
-    summary: "An installed plugin's process is not confined to its own folder, so it was not run.",
-    template: "Plugin '{plugin}' was not run: its process on {runtime} is not confined to its folder ({problem}).",
-    spec: "docs/adr/0049-an-installed-plugin-runs-under-the-runtime-permission-model.md",
-    fatal: true,
-    fatality: "A plugin that did not load contributed no slot to skip."
-  },
-  E_PLUGIN_CRASHED: {
-    severity: "error",
-    summary: "An isolated plugin's process stopped while the host was waiting for it.",
-    template: "Plugin '{plugin}' stopped running: {reason}.",
-    spec: "docs/plugin-api.md",
-    fatal: false,
-    fatality: "One frame was waiting on the process; the frames other exporters draw survive (ADR 0025)."
-  },
-  E_PLUGIN_PROTOCOL: {
-    severity: "error",
-    summary: "An isolated plugin sent the host a message that does not match the RPC protocol.",
+    summary: "An isolated plugin sent the host a message that does not match the RPC protocol, or an in-process panel call answered a shape that protocol refuses.",
     template: "Plugin '{plugin}' sent a message the host cannot read: {problem}.",
     spec: "docs/plugin-api.md",
     fatal: false,
@@ -22257,11 +20087,21 @@ var diagnosticCodes2 = {
   // host, and a panel whose plugin registered no `call` is refused rather than ignored (ADR 0173).
   E_PANEL_CALL: {
     severity: "error",
-    summary: "A panel's page asked its plugin something the host refused: no 'call', a bad method, over 1 MiB of JSON, or an answer that is not JSON.",
+    summary: "A panel's page asked its plugin something the host refused: no 'call', a bad method, params over 1 MiB of JSON, or a throw from an in-process 'call'.",
     template: "Panel '{panel}' could not call its plugin: {problem}.",
     spec: "docs/adr/0173-a-panel-calls-its-own-plugin-process.md",
     fatal: false,
     fatality: "Only that call is refused; the panel stays open and its plugin keeps running."
+  },
+  // A panel's page is anybody's JavaScript, so a secret never enters it: the page asks its own
+  // plugin's process through `call`, and the process uses the credential (TYTO-641, ADR 0173).
+  E_PANEL_CREDENTIAL_READ: {
+    severity: "error",
+    summary: "A panel's page asked to read a credential, which the host never hands a page; it may still store and forget one.",
+    template: "Panel '{panel}' cannot read credential '{key}': ask its plugin through 'call', which uses the secret without putting it in the page.",
+    spec: "docs/adr/0173-a-panel-calls-its-own-plugin-process.md",
+    fatal: false,
+    fatality: "Only that read is refused; the panel stays open and its plugin keeps running."
   },
   E_CREDENTIAL_MISSING: {
     severity: "error",
@@ -22304,7 +20144,7 @@ var diagnosticCodes2 = {
   E_SIGNIN_REQUIRED: {
     severity: "error",
     summary: "A plugin asked for an access token of a sign-in it declared, and nobody signed in.",
-    template: "Plugin '{plugin}' needs sign-in '{id}', and nobody has signed in to it on {host}; sign in from the plugins screen.",
+    template: "Plugin '{plugin}' needs sign-in '{id}', and nobody has signed in to it on {host}; {how}.",
     spec: "docs/adr/0174-a-plugin-signs-in-through-the-host-with-pkce-on-loopback.md",
     fatal: false,
     fatality: "It is the plugin's call that is refused; what the plugin does with that is its own."
@@ -22559,8 +20399,8 @@ var diagnosticCodes2 = {
   },
   E_PLUGIN_FILE_SOURCE_REFUSED: {
     severity: "error",
-    summary: "A commit a plugin file names was fetched and could not be loaded as a plugin.",
-    template: "'{git}' at '{ref}' resolved to commit {commit}, which was refused: {problem}. {outcome}",
+    summary: "A source a plugin file names was fetched and could not be loaded as a plugin.",
+    template: "'{git}' at '{ref}' resolved to {commit}, which was refused: {problem}. {outcome}",
     spec: "docs/adr/0151-plugin-files-install-and-configure-templates.md",
     fatal: false,
     fatality: "The commit locked before loads when there is one; otherwise nothing from that source does."
@@ -22671,6 +20511,22 @@ var diagnosticCodes2 = {
     fatal: true,
     fatality: "The IR is malformed, so the exporter has nothing it can draw."
   },
+  E_SCENE_GUIDE_NODE_NOT_FOUND: {
+    severity: "error",
+    summary: "A guide's layer names a node that is not one of its frame's top-level children.",
+    template: "Layer '{layer}' of the guide for '{frame}' names node '{id}', which is not one of the frame's top-level children.",
+    spec: "docs/adr/0220-a-slot-may-declare-art-painted-outside-tyto.md",
+    fatal: true,
+    fatality: "The IR is malformed, so the exporter has nothing it can draw."
+  },
+  E_SCENE_GUIDE_LAYERING: {
+    severity: "error",
+    summary: "A frame's node is not in exactly one of its guide's layers.",
+    template: "Node '{id}' of the guide for '{frame}' is in {count} layers; every top-level node is in exactly one.",
+    spec: "docs/adr/0220-a-slot-may-declare-art-painted-outside-tyto.md",
+    fatal: true,
+    fatality: "A node in no layer would vanish from the layered file and one in two would be painted twice, so the IR is malformed."
+  },
   E_SCENE_MASK_DESCENDANT: {
     severity: "error",
     summary: "A mask references a descendant of the node it masks.",
@@ -22708,7 +20564,7 @@ var diagnosticCodes2 = {
   E_SCENE_SVG_MARKUP: {
     severity: "error",
     summary: "A vector of kind 'svg' carries markup outside the subset Tyto inlines.",
-    template: `Vector '{id}' carries {problem}, which Tyto will not inline; ${SVG_MARKUP_WAY_OUT2}.`,
+    template: `Vector '{id}' carries {problem}, which Tyto will not inline; ${SVG_MARKUP_WAY_OUT}.`,
     spec: "docs/adr/0068-inline-svg-markup-is-a-closed-subset-checked-in-core.md",
     fatal: true,
     fatality: "The IR is malformed like any other broken invariant, and drawing the markup anyway is the harm the check exists to prevent."
@@ -22763,6 +20619,30 @@ var diagnosticCodes2 = {
     spec: "docs/template-authoring.md",
     fatal: true,
     fatality: "A frame with no size cannot be drawn, and `compile` refuses before it builds anything \u2014 so the formats that are defined do not render either, which is what would have to change first."
+  },
+  E_EXTERNAL_ART_ASPECT: {
+    severity: "error",
+    summary: "A slot's full external art does not keep the proportion of a format it covers (ADR 0220).",
+    template: "Slot '{slot}' of template '{template}' declares full art of {width}\xD7{height} for format '{format}', which is {formatWidth}\xD7{formatHeight}: full art keeps the format's proportion, so its height there is {expected}.",
+    spec: "docs/adr/0220-a-slot-may-declare-art-painted-outside-tyto.md",
+    fatal: true,
+    fatality: "The declaration is the size somebody paints to, and art painted to the wrong proportion is cropped or stretched on every render; `compile` refuses before it builds anything, as it does for a format with no size."
+  },
+  E_GUIDE_NO_EXTERNAL_ART: {
+    severity: "error",
+    summary: "A guide was asked for a brief whose template declares no art painted outside Tyto (ADR 0221).",
+    template: "Template '{template}' declares no slot with external art, so there is no guide to write: a guide is for a slot whose manifest declares 'external'.",
+    spec: "docs/adr/0221-a-guides-layers-are-rasterised-into-the-scene-and-an-exporter-may-answer-bytes.md",
+    fatal: true,
+    fatality: "A guide with no art is the artwork cut into layers with nowhere to paint, which looks like a guide and guides nothing; the run writes no file."
+  },
+  E_GUIDE_NEWER_THAN_BRIEF: {
+    severity: "error",
+    summary: "A guide was not written over because it changed after the brief and may hold paint (ADR 0222).",
+    template: "The guide '{guide}' was changed after the brief, and may hold the art painted in it: move it away, or pass --force to write it again.",
+    spec: "docs/adr/0222-external-art-has-a-file-per-format-beside-the-cited-one.md",
+    fatal: true,
+    fatality: "Writing over a guide somebody painted in loses their work with no way back, so the run writes no guide at all and says which file stopped it."
   },
   E_MANIFEST_SYNTAX: {
     severity: "error",
@@ -22993,6 +20873,14 @@ var diagnosticCodes2 = {
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
   },
+  W_EXTERNAL_ART_MISSING: {
+    severity: "warning",
+    summary: "A slot whose art is painted outside Tyto has no file yet, and an outlined box stands in for it (ADR 0220).",
+    template: "Slot '{slot}' of template '{template}' has no art yet ({reason}); an outlined box is drawn where it goes.",
+    spec: "docs/adr/0220-a-slot-may-declare-art-painted-outside-tyto.md",
+    fatal: false,
+    fatality: "The art arrives later by design, and the box keeps its place, size and stacking in every format; a warning never replaces a value (ADR 0013)."
+  },
   // Warnings and not errors: a configuration is tolerant per value, as a plugin file is per
   // entry (ADR 0151 decision 2). The template draws with its default instead, and says so.
   W_TEMPLATE_VALUE_UNKNOWN: {
@@ -23066,6 +20954,34 @@ var diagnosticCodes2 = {
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
   },
+  // Three codes and not one, because the fix differs: a command Tyto does not draw, a brace
+  // out of place, and a formula or group with nothing in it (ADR 0206 decision 5, TYTO-734).
+  // Not fatal: the formula is drawn as the text the author wrote, `$` included, so the
+  // artwork still exists and shows exactly what was not understood.
+  E_FORMULA_COMMAND: {
+    severity: "error",
+    summary: "A formula holds a `\\` command or escape other than `\\frac`, `\\ `, `\\$`, `\\{` and `\\}`.",
+    template: "'{command}' is not something a formula can draw; it knows \\frac, ^ and _, and a \\ before a space, a $ or a brace.",
+    spec: "docs/brief-language.md",
+    fatal: false,
+    fatality: "The formula is drawn as its source text and the rest of the brief is unaffected."
+  },
+  E_FORMULA_GROUP: {
+    severity: "error",
+    summary: "A `{\u2026}` in a formula is missing, unclosed, or where no group belongs.",
+    template: "Formula group: {problem}.",
+    spec: "docs/brief-language.md",
+    fatal: false,
+    fatality: "The formula is drawn as its source text and the rest of the brief is unaffected."
+  },
+  E_FORMULA_EMPTY: {
+    severity: "error",
+    summary: "A formula (`$$`) or one of its groups (`{}`) holds nothing.",
+    template: "This {part} is empty; write what it should hold.",
+    spec: "docs/brief-language.md",
+    fatal: false,
+    fatality: "The formula is drawn as its source text and the rest of the brief is unaffected."
+  },
   // A warning and not an error, because the brief still means what the author meant: the
   // `\` is dropped and the line breaks once, as every block line does (ADR 0109). It says so
   // because the `\` used to add an empty line, and an author who wrote it for that gets told.
@@ -23073,6 +20989,18 @@ var diagnosticCodes2 = {
     severity: "warning",
     summary: "A line of a directive body ends in a `\\` and another line of its indented block follows, which already starts a new line.",
     template: "Every line of an indented block already starts a new line; this \\ is not needed.",
+    spec: "docs/brief-language.md",
+    fatal: false,
+    fatality: "A warning never replaces a value (ADR 0013)."
+  },
+  // A warning and not an error, because the line is valid: since TYTO-708 a text line at
+  // column 0 is a body line of the directive above (ADR 0202). One that starts with a single
+  // `:` and a name is most likely a directive missing a colon, and reading it as text without
+  // a word would turn a typo into a silent change of the artwork.
+  W_LIKELY_DIRECTIVE: {
+    severity: "warning",
+    summary: "A body line at column 0 starts with a single `:` and a name, which reads like a directive missing a colon; it is kept as text.",
+    template: "'{line}' is read as text; a directive starts with ::.",
     spec: "docs/brief-language.md",
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
@@ -23425,6 +21353,15 @@ var diagnosticCodes2 = {
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
   },
+  // TYTO-536: a shared folder must not put words in a person's command line before it is trusted.
+  W_PROJECT_ALIASES_WITHHELD: {
+    severity: "warning",
+    summary: "A restricted source's command panel aliases are withheld until it is trusted.",
+    template: "The aliases {aliases} are withheld because this folder is not trusted.",
+    spec: "docs/adr/0111-nothing-a-source-ships-runs-before-the-person-trusts-it.md",
+    fatal: false,
+    fatality: "Only the source's aliases are left out; the person's own still expand."
+  },
   W_PROJECT_PLUGIN_FILES_WITHHELD: {
     severity: "warning",
     summary: "A restricted folder's plugin files are neither fetched nor loaded until the folder is trusted.",
@@ -23539,7 +21476,7 @@ var diagnosticCodes2 = {
   },
   E_RECIPE_PARAM: {
     severity: "error",
-    summary: "A recipe's parameter is used without a declaration, or has no value when it runs.",
+    summary: "A recipe's param, const or set is used where unknown, has no value, or is overridden.",
     template: "Parameter '{param}' {problem}.",
     spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
     fatal: true,
@@ -23598,6 +21535,16 @@ var diagnosticCodes2 = {
     fatal: false,
     fatality: "Nothing of that plan is written, and no recipe state is committed."
   },
+  // ADR 0219: one Apply of every plan of an `apply together` recipe, refused before any write or
+  // stopped at the first cell that does not go through.
+  E_RECIPE_APPLY_TOGETHER: {
+    severity: "error",
+    summary: "'apply together' did not apply every plan: it was refused before any write, or it stopped at a cell whose Apply did not go through.",
+    template: "'apply together' {problem}.",
+    spec: "docs/adr/0219-apply-together-applies-a-runs-plans-in-order-against-the-renames-above.md",
+    fatal: false,
+    fatality: "The plans below the cell it names are not applied and wait for the next run; what the cells above it applied stays applied."
+  },
   // `to-brief` checks its rows against the template and the workspace before it plans, so a
   // brief that could not compile, or a file outside the workspace, is never shown (ADR 0172).
   E_RECIPE_BRIEF: {
@@ -23607,6 +21554,46 @@ var diagnosticCodes2 = {
     spec: "docs/adr/0172-to-brief-writes-one-brief-per-row-through-host-ports.md",
     fatal: false,
     fatality: "That cell has no plan and the cells after it do not run; earlier cells keep theirs. Nothing is written."
+  },
+  // `to-delivery` checks its arguments and the workspace before it plans; a row it cannot write
+  // is refused in the cell's note instead, and the other rows still plan (ADR 0210).
+  E_RECIPE_DELIVERY: {
+    severity: "error",
+    summary: "'to-delivery' cannot plan its delivery records: an unknown field, a field a recipe may not write, a host that writes none, or a folder it may not write.",
+    template: "'to-delivery' {problem}.",
+    spec: "docs/adr/0210-a-delivery-may-exist-without-a-brief-and-a-record-says-what-it-is.md",
+    fatal: false,
+    fatality: "That cell has no plan and the cells after it do not run; earlier cells keep theirs. Nothing is written."
+  },
+  // `rename-exports` checks its arguments and the workspace before it plans; a delivery it cannot
+  // rename is refused in the cell's note instead, and the others still plan (ADR 0218).
+  E_RECIPE_RENAME_EXPORTS: {
+    severity: "error",
+    summary: "'rename-exports' cannot plan the names of the deliveries' exports: a missing argument, a host that renames no files, or a folder it may not write.",
+    template: "'rename-exports' {problem}.",
+    spec: "docs/adr/0218-a-deliverys-exports-are-renamed-by-its-stem-as-a-plan.md",
+    fatal: false,
+    fatality: "That cell has no plan and the cells after it do not run; earlier cells keep theirs. Nothing is renamed."
+  },
+  // `deliveries` reads the records back as rows only inside a trusted workspace; a record it
+  // cannot read is a warning, and the other folders still read (ADR 0211).
+  E_RECIPE_DELIVERIES: {
+    severity: "error",
+    summary: "'deliveries' cannot read the delivery records: the host reads none, the recipe is in no trusted workspace, or fields= lists a name a declared field cannot have.",
+    template: "'deliveries' {problem}.",
+    spec: "docs/adr/0211-the-delivery-folder-is-the-source-and-inbound-fields-name-a-winner.md",
+    fatal: false,
+    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs. Nothing is written."
+  },
+  // `with-deliveries` reads the same records beside rows already there, through the same checks,
+  // and refuses to shadow a column the table has (TYTO-779, ADR 0213's note of 2026-11-18).
+  E_RECIPE_WITH_DELIVERIES: {
+    severity: "error",
+    summary: "'with-deliveries' cannot bring the delivery records: the host reads none, the recipe is in no trusted workspace, fields= lists a name a declared field cannot have, or the table already has a column it would add.",
+    template: "'with-deliveries' {problem}.",
+    spec: "docs/adr/0213-a-delivery-record-keeps-the-fields-a-recipe-declares.md",
+    fatal: false,
+    fatality: "That cell has no table and the cells after it do not run; earlier cells keep theirs. Nothing is written."
   },
   // `call` checks its address, its credential and its body before it plans, so a request to a
   // host the workspace did not allow is never shown, let alone sent (ADR 0193).
@@ -23777,7 +21764,7 @@ var diagnosticCodes2 = {
   },
   E_RECIPE_TEMPLATE: {
     severity: "error",
-    summary: "A 'compose' or 'rules' template has an unclosed placeholder, a stray brace or a filter that does not exist.",
+    summary: "A 'compose' or 'rules' template has an unclosed placeholder, a stray brace, a filter that does not exist or a 'local' format with a letter outside a token.",
     template: "Template '{template}' {problem}.",
     spec: "docs/adr/0136-company-rules-are-configuration-read-by-generic-verbs.md",
     fatal: false,
@@ -23837,12 +21824,81 @@ var diagnosticCodes2 = {
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
   },
+  // TYTO-675: a cell '|local' cannot read is written empty, which a sheet shows as a missing
+  // date; one count per column keeps the reason visible.
+  W_RECIPE_LOCAL_UNREAD: {
+    severity: "warning",
+    summary: "A template's 'local' filter found cells that are not an ISO-8601 instant with a zone, and left them empty.",
+    template: "{count} cell(s) of '{column}' are not an ISO-8601 instant with Z or an offset, so 'local' wrote them empty.",
+    spec: "docs/adr/0139-a-recipe-run-reads-time-from-an-injected-clock.md",
+    fatal: false,
+    fatality: "A warning never replaces a value (ADR 0013)."
+  },
   // A child whose parent is not in the table counts toward no parent; a recipe that forgot to
   // fetch the parents would otherwise read as parents with no children.
   W_RECIPE_ROLLUP_ORPHANS: {
     severity: "warning",
     summary: "A 'rollup' found rows whose parent is not a row of the table, and counted them nowhere.",
     template: "{count} row(s) name a parent in '{column}' that the table lacks: {parents}.",
+    spec: "docs/adr/0140-a-recipe-remembers-applied-rows-in-machine-local-state.md",
+    fatal: false,
+    fatality: "A warning never replaces a value (ADR 0013)."
+  },
+  // TYTO-437: a recipe that reports to a person writes a warning, not a column a later 'where'
+  // can drop. One per matching row up to WARN_ROW_LIMIT, then one that counts the rest.
+  W_RECIPE_WARN: {
+    severity: "warning",
+    summary: "A 'warn' step's when= kept a row, and the run reports its message; past 100 rows, one more says how many were not listed.",
+    template: "{subject}: {message}",
+    spec: "docs/adr/0128-a-recipe-is-a-closed-vocabulary-notebook-and-plugins-contribute-verbs.md",
+    fatal: false,
+    fatality: "A warning never replaces a value (ADR 0013)."
+  },
+  // TYTO-771: one unreadable record leaves its delivery out of the table, never the others.
+  W_RECIPE_DELIVERY_RECORD: {
+    severity: "warning",
+    summary: "'deliveries' or 'with-deliveries' left a delivery out: its record is not one, its folder could not be read, or another folder has its key or its name.",
+    template: "'{verb}' left out {folder}: {problem}.",
+    spec: "docs/adr/0211-the-delivery-folder-is-the-source-and-inbound-fields-name-a-winner.md",
+    fatal: false,
+    fatality: "The other deliveries are still read; nothing is written."
+  },
+  // TYTO-776: a declared field two edits from a fixed one is likely a slip, and would otherwise
+  // be written silently as a new field next to the one the recipe meant.
+  W_RECIPE_DELIVERY_FIELD_NEAR: {
+    severity: "warning",
+    summary: "'to-delivery' declares a field whose name is two edits or fewer from a fixed field's, which may be a slip.",
+    template: "'{field}' is declared as a new field; did you mean '{fixed}'?",
+    spec: "docs/adr/0213-a-delivery-record-keeps-the-fields-a-recipe-declares.md",
+    fatal: false,
+    fatality: "The field is still declared and written; a name may be close to a fixed one."
+  },
+  // TYTO-776: a record written by hand before declared fields may hold another shape under
+  // `fields`; it still reads, and the warning says why its declared columns are empty.
+  W_RECIPE_DELIVERY_FIELDS_UNREAD: {
+    severity: "warning",
+    summary: "'deliveries' or 'with-deliveries' read a record whose 'fields' is not a map of text, and gave it no declared fields.",
+    template: "'{verb}' read {folder} without its declared fields: its 'fields' is not a map of text.",
+    spec: "docs/adr/0213-a-delivery-record-keeps-the-fields-a-recipe-declares.md",
+    fatal: false,
+    fatality: "The delivery is still read, with its fixed fields; nothing is written."
+  },
+  // TYTO-714: with clear=push, a sheet read that lost a column reads as every cell cleared. The
+  // run holds those clears instead of clearing the remote side, and says which column.
+  W_RECIPE_DECIDE_CLEAR_COLUMN: {
+    severity: "warning",
+    summary: "A 'decide' with clear=push found its local column missing or empty on every row, and pushed no clear that run.",
+    template: "Column '{column}' {problem}, so 'decide' held its {count} clear(s) and cleared nothing on the remote side.",
+    spec: "docs/adr/0140-a-recipe-remembers-applied-rows-in-machine-local-state.md",
+    fatal: false,
+    fatality: "A warning never replaces a value (ADR 0013)."
+  },
+  // TYTO-714: more clears in one run than a person makes between runs is held, all of them, until
+  // the recipe raises clear-limit= for a run that means it.
+  W_RECIPE_DECIDE_CLEAR_LIMIT: {
+    severity: "warning",
+    summary: "A 'decide' with clear=push would have pushed more clears than clear-limit=, and pushed none of them.",
+    template: "'decide' held {count} clear(s), more than clear-limit={limit}; to push them, raise clear-limit= for this run, or write clear-limit=none to lift the limit.",
     spec: "docs/adr/0140-a-recipe-remembers-applied-rows-in-machine-local-state.md",
     fatal: false,
     fatality: "A warning never replaces a value (ADR 0013)."
@@ -23869,12 +21925,12 @@ var diagnosticCodes2 = {
     fatality: "Only that contribution is left out; vim and every other contribution keep working."
   }
 };
-var diagnosticCodeList2 = Object.keys(diagnosticCodes2);
-var PLACEHOLDER2 = /\{([a-zA-Z][a-zA-Z0-9]*)\}/g;
-function formatDiagnosticMessage2(code, params) {
-  const { template } = diagnosticCodes2[code];
+var diagnosticCodeList = Object.keys(diagnosticCodes);
+var PLACEHOLDER = /\{([a-zA-Z][a-zA-Z0-9]*)\}/g;
+function formatDiagnosticMessage(code, params) {
+  const { template } = diagnosticCodes[code];
   const supplied = params;
-  return template.replace(PLACEHOLDER2, (_whole, name) => {
+  return template.replace(PLACEHOLDER, (_whole, name) => {
     const value = supplied[name];
     if (value === void 0) {
       throw new TypeError(`Diagnostic ${code} is missing the parameter '${name}'.`);
@@ -23882,34 +21938,72 @@ function formatDiagnosticMessage2(code, params) {
     return String(value);
   });
 }
-function diagnostic2(code, params, options = {}) {
-  const base3 = {
-    severity: diagnosticCodes2[code].severity,
+function sourceRange(start, end) {
+  if (!Number.isInteger(start) || !Number.isInteger(end)) {
+    throw new TypeError(`Range offsets must be integers, received (${start}, ${end}).`);
+  }
+  if (start < 0) {
+    throw new RangeError(`Range start must not be negative, received ${start}.`);
+  }
+  if (end < start) {
+    throw new RangeError(`Range end ${end} must not precede start ${start}.`);
+  }
+  return { start, end };
+}
+function unionRanges(a, b) {
+  return sourceRange(Math.min(a.start, b.start), Math.max(a.end, b.end));
+}
+function diagnostic(code, params, options = {}) {
+  const base2 = {
+    severity: diagnosticCodes[code].severity,
     code,
-    message: formatDiagnosticMessage2(code, params)
+    message: formatDiagnosticMessage(code, params)
   };
   return {
-    ...base3,
+    ...base2,
     ...options.range !== void 0 ? { range: options.range } : {},
     ...options.hint !== void 0 ? { hint: options.hint } : {}
   };
 }
-function isStandaloneOperator2(word) {
+var origins = /* @__PURE__ */ new WeakMap();
+function rememberOrigin(run2, range) {
+  origins.set(run2, range);
+}
+function originOf(run2) {
+  return origins.get(run2);
+}
+function linearReading(math) {
+  const grouped = (items) => {
+    const reading = linearReading(items);
+    return [...reading].length === 1 ? reading : `(${reading})`;
+  };
+  return math.map((item) => {
+    switch (item.kind) {
+      case "text":
+        return item.text;
+      case "fraction":
+        return `${grouped(item.numerator)}/${grouped(item.denominator)}`;
+      case "scripts":
+        return (item.subscript === void 0 ? "" : `_${grouped(item.subscript)}`) + (item.superscript === void 0 ? "" : `^${grouped(item.superscript)}`);
+    }
+  }).join("");
+}
+function isStandaloneOperator(word) {
   return OPERATOR_WORD.test(word);
 }
 var OPERATOR_WORD = /^[\p{Sm}\u00b7\u2013-]+$/u;
-var unitInterval2 = external_exports.number().min(0).max(1);
-var finite2 = external_exports.number().finite();
-var nonNegative2 = external_exports.number().finite().nonnegative();
-var sizeSchema2 = external_exports.strictObject({ w: nonNegative2, h: nonNegative2 });
-var unitPointSchema2 = external_exports.strictObject({ x: unitInterval2, y: unitInterval2 });
-var colorSchema2 = external_exports.strictObject({
+var unitInterval = external_exports.number().min(0).max(1);
+var finite = external_exports.number().finite();
+var nonNegative = external_exports.number().finite().nonnegative();
+var sizeSchema = external_exports.strictObject({ w: nonNegative, h: nonNegative });
+var unitPointSchema = external_exports.strictObject({ x: unitInterval, y: unitInterval });
+var colorSchema = external_exports.strictObject({
   r: external_exports.number().int().min(0).max(255),
   g: external_exports.number().int().min(0).max(255),
   b: external_exports.number().int().min(0).max(255),
-  a: unitInterval2.default(1)
+  a: unitInterval.default(1)
 });
-var blendModes2 = [
+var blendModes = [
   "normal",
   "multiply",
   "screen",
@@ -23927,8 +22021,8 @@ var blendModes2 = [
   "color",
   "luminosity"
 ];
-var blendModeSchema2 = external_exports.enum(blendModes2);
-var fontRefSchema2 = external_exports.strictObject({
+var blendModeSchema = external_exports.enum(blendModes);
+var fontRefSchema = external_exports.strictObject({
   family: external_exports.string().min(1),
   /**
    * `bundled` fonts ship with Tyto; `file` ones come from the brief's folder; `system` ones
@@ -23938,7 +22032,7 @@ var fontRefSchema2 = external_exports.strictObject({
   source: external_exports.enum(["bundled", "file", "system"]),
   path: external_exports.string().min(1).optional()
 });
-var assetRefSchema2 = external_exports.strictObject({
+var assetRefSchema = external_exports.strictObject({
   id: external_exports.string().min(1),
   source: external_exports.enum(["file", "url", "inline"]),
   path: external_exports.string().min(1).optional(),
@@ -23950,63 +22044,63 @@ var assetRefSchema2 = external_exports.strictObject({
    * the file itself. Absent on a hand-built ref and on a header nothing parsed: an answer
    * the host guessed would place the picture with confidence, in the wrong frame.
    */
-  size: sizeSchema2.optional()
+  size: sizeSchema.optional()
 });
-var fitSchema2 = external_exports.enum(["cover", "contain", "fill"]);
-var gradientStopSchema2 = external_exports.strictObject({
-  offset: unitInterval2,
-  color: colorSchema2
+var fitSchema = external_exports.enum(["cover", "contain", "fill"]);
+var gradientStopSchema = external_exports.strictObject({
+  offset: unitInterval,
+  color: colorSchema
 });
-var gradientStops2 = external_exports.array(gradientStopSchema2).min(2);
-var paintSchema2 = external_exports.discriminatedUnion("kind", [
-  external_exports.strictObject({ kind: external_exports.literal("solid"), color: colorSchema2 }),
+var gradientStops = external_exports.array(gradientStopSchema).min(2);
+var paintSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.strictObject({ kind: external_exports.literal("solid"), color: colorSchema }),
   external_exports.strictObject({
     kind: external_exports.literal("linear-gradient"),
     /** Degrees clockwise from "up", the way a designer states a gradient angle. */
-    angle: finite2,
-    stops: gradientStops2
+    angle: finite,
+    stops: gradientStops
   }),
   external_exports.strictObject({
     kind: external_exports.literal("radial-gradient"),
-    center: unitPointSchema2,
-    radius: nonNegative2,
-    stops: gradientStops2
+    center: unitPointSchema,
+    radius: nonNegative,
+    stops: gradientStops
   }),
-  external_exports.strictObject({ kind: external_exports.literal("image"), asset: assetRefSchema2, fit: fitSchema2 })
+  external_exports.strictObject({ kind: external_exports.literal("image"), asset: assetRefSchema, fit: fitSchema })
 ]);
-var strokeSchema2 = external_exports.strictObject({
-  paint: paintSchema2,
-  width: nonNegative2,
+var strokeSchema = external_exports.strictObject({
+  paint: paintSchema,
+  width: nonNegative,
   align: external_exports.enum(["inside", "center", "outside"]).default("center")
 });
-var effectSchema2 = external_exports.discriminatedUnion("kind", [
+var effectSchema = external_exports.discriminatedUnion("kind", [
   external_exports.strictObject({
     kind: external_exports.literal("shadow"),
-    x: finite2,
-    y: finite2,
+    x: finite,
+    y: finite,
     /**
      * The Gaussian's standard deviation, which is how CSS `drop-shadow()` reads its length
      * and what SVG's `stdDeviation` is — every exporter writes it unconverted (ADR 0156).
      */
-    blur: nonNegative2,
-    spread: finite2,
-    color: colorSchema2
+    blur: nonNegative,
+    spread: finite,
+    color: colorSchema
   }),
   /** `radius` is a standard deviation too, as CSS `blur()` reads it. */
-  external_exports.strictObject({ kind: external_exports.literal("blur"), radius: nonNegative2 }),
-  external_exports.strictObject({ kind: external_exports.literal("background-blur"), radius: nonNegative2 })
+  external_exports.strictObject({ kind: external_exports.literal("blur"), radius: nonNegative }),
+  external_exports.strictObject({ kind: external_exports.literal("background-blur"), radius: nonNegative })
 ]);
-var transformSchema2 = external_exports.strictObject({
-  x: finite2.default(0),
-  y: finite2.default(0),
+var transformSchema = external_exports.strictObject({
+  x: finite.default(0),
+  y: finite.default(0),
   /** Degrees, clockwise. */
-  rotation: finite2.default(0),
-  scaleX: finite2.default(1),
-  scaleY: finite2.default(1),
+  rotation: finite.default(0),
+  scaleX: finite.default(1),
+  scaleY: finite.default(1),
   /** Origin of rotation and scale, normalised inside the node's own box. */
-  anchor: unitPointSchema2.default({ x: 0, y: 0 })
+  anchor: unitPointSchema.default({ x: 0, y: 0 })
 });
-var identityTransform2 = {
+var identityTransform = {
   x: 0,
   y: 0,
   rotation: 0,
@@ -24014,57 +22108,176 @@ var identityTransform2 = {
   scaleY: 1,
   anchor: { x: 0, y: 0 }
 };
-var maskRefSchema2 = external_exports.strictObject({
+var maskRefSchema = external_exports.strictObject({
   nodeId: external_exports.string().min(1),
   mode: external_exports.enum(["alpha", "luminance"])
 });
-var TemplateError2 = class extends Error {
+var TemplateError = class extends Error {
   diagnostic;
   constructor(field, problem) {
-    const built = diagnostic2("E_TEMPLATE_VALUE", { field, problem });
+    const built = diagnostic("E_TEMPLATE_VALUE", { field, problem });
     super(built.message);
     this.name = "TemplateError";
     this.diagnostic = built;
   }
 };
-var ORPHAN_WORD_LIMIT2 = 80;
-function isTonedMark2(mark2) {
+var ORPHAN_WORD_LIMIT = 80;
+function isTonedMark(mark2) {
   return "layers" in mark2;
 }
-var noBrandKit2 = Object.freeze({});
-var HEX2 = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-function expandShorthand2(digits) {
+var noBrandKit = Object.freeze({});
+var HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+function expandShorthand(digits) {
   return digits.length <= 4 ? [...digits].map((digit) => digit + digit).join("") : digits;
 }
-function channel2(hex3, index) {
+function channel(hex3, index) {
   return Number.parseInt(hex3.slice(index * 2, index * 2 + 2), 16);
 }
-function color2(value) {
+function color(value) {
   if (typeof value !== "string") {
     return { r: value.r, g: value.g, b: value.b, a: value.a ?? 1 };
   }
-  if (!HEX2.test(value)) {
-    throw new TemplateError2("color", `'${value}' is not a hex colour such as '#ff5900'`);
+  if (!HEX.test(value)) {
+    throw new TemplateError("color", `'${value}' is not a hex colour such as '#ff5900'`);
   }
-  const digits = expandShorthand2(value.slice(1));
+  const digits = expandShorthand(value.slice(1));
   return {
-    r: channel2(digits, 0),
-    g: channel2(digits, 1),
-    b: channel2(digits, 2),
-    a: digits.length === 8 ? Math.round(channel2(digits, 3) / 255 * 1e3) / 1e3 : 1
+    r: channel(digits, 0),
+    g: channel(digits, 1),
+    b: channel(digits, 2),
+    a: digits.length === 8 ? Math.round(channel(digits, 3) / 255 * 1e3) / 1e3 : 1
   };
 }
-function solid2(value) {
-  return { kind: "solid", color: color2(value) };
+function solid(value) {
+  return { kind: "solid", color: color(value) };
 }
-function systemFont2(family) {
+function systemFont(family) {
   return { family, source: "system" };
 }
-
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.44.0/node_modules/@rafaelsilvalor/tyto-core/dist/template.js
-function base2(options) {
+function paintOf(value) {
+  return typeof value === "object" && "kind" in value ? value : solid(value);
+}
+function run(text2, options) {
   return {
-    transform: { ...identityTransform2, ...options.transform },
+    kind: "text",
+    text: text2,
+    font: options.font,
+    size: options.size,
+    weight: options.weight ?? 400,
+    style: options.style ?? "normal",
+    color: paintOf(options.color),
+    ...options.decoration !== void 0 ? { decoration: options.decoration } : {}
+  };
+}
+function lineBreak() {
+  return { kind: "break" };
+}
+var BOLD = 700;
+var sameColor = (a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a;
+var sameStops = (a, b) => a.length === b.length && a.every((stop2, index) => {
+  const other = b[index];
+  return other !== void 0 && stop2.offset === other.offset && sameColor(stop2.color, other.color);
+});
+function samePaint(a, b) {
+  if (a.kind !== b.kind) return false;
+  switch (a.kind) {
+    case "solid":
+      return b.kind === "solid" && sameColor(a.color, b.color);
+    case "linear-gradient":
+      return b.kind === "linear-gradient" && a.angle === b.angle && sameStops(a.stops, b.stops);
+    case "radial-gradient":
+      return b.kind === "radial-gradient" && a.center.x === b.center.x && a.center.y === b.center.y && a.radius === b.radius && sameStops(a.stops, b.stops);
+    case "image":
+      return b.kind === "image" && a.fit === b.fit && a.asset.id === b.asset.id && a.asset.source === b.asset.source && a.asset.path === b.asset.path && a.asset.hash === b.asset.hash;
+  }
+}
+var sameFont = (a, b) => a.family === b.family && a.source === b.source && a.path === b.path;
+var sameStyle = (a, b) => a.size === b.size && a.weight === b.weight && a.style === b.style && a.decoration === b.decoration && sameFont(a.font, b.font) && samePaint(a.color, b.color);
+function absorbedByPrevious(target, produced, range) {
+  const previous = target[target.length - 1];
+  if (previous === void 0 || previous.kind !== "text") return false;
+  if (!sameStyle(previous, produced)) return false;
+  const merged = { ...previous, text: previous.text + produced.text };
+  const origin = originOf(previous);
+  rememberOrigin(merged, origin === void 0 ? range : unionRanges(origin, range));
+  target[target.length - 1] = merged;
+  return true;
+}
+function styled(inline, style2, options) {
+  switch (inline.kind) {
+    case "bold":
+      return typeof options.bold === "object" ? { ...style2, weight: BOLD, ...options.bold } : { ...style2, weight: options.bold ?? BOLD };
+    case "italic":
+      return { ...style2, ...options.italic, style: "italic" };
+    case "mark":
+      return { ...style2, ...options.mark?.(inline.key, inline.value) };
+    default:
+      return style2;
+  }
+}
+function breakOf(inline, spacing) {
+  return inline.paragraph === true && spacing !== void 0 && Number.isFinite(spacing) && spacing > 0 ? { kind: "break", space: spacing } : { kind: "break" };
+}
+function formulaOf(inline, style2) {
+  const { font: font2, size, weight, style: slant, color: color2 } = run(inline.source, style2);
+  const produced = {
+    kind: "formula",
+    text: linearReading(inline.math),
+    math: [...inline.math],
+    font: font2,
+    size,
+    weight,
+    style: slant,
+    color: color2
+  };
+  rememberOrigin(produced, inline.range);
+  return produced;
+}
+function append(target, text2, style2, options) {
+  for (const inline of text2) {
+    switch (inline.kind) {
+      case "text": {
+        if (inline.value === "") break;
+        const produced = run(inline.value, style2);
+        if (absorbedByPrevious(target, produced, inline.range)) break;
+        rememberOrigin(produced, inline.range);
+        target.push(produced);
+        break;
+      }
+      case "break":
+        target.push(breakOf(inline, options.paragraphSpacing));
+        break;
+      case "formula":
+        target.push(formulaOf(inline, style2));
+        break;
+      default:
+        append(target, inline.children, styled(inline, style2, options), options);
+        break;
+    }
+  }
+}
+function runsOf(text2, base2, options = {}) {
+  const runs = [];
+  append(runs, text2, base2, options);
+  return runs;
+}
+function numberValue(context, name, fallback) {
+  const value = context.values?.[name];
+  return typeof value === "number" ? value : fallback;
+}
+function colorValue(context, name, fallback) {
+  const value = context.values?.[name];
+  return typeof value === "string" ? value : fallback;
+}
+function imageValue(context, name) {
+  const value = context.values?.[name];
+  return typeof value === "object" && "hash" in value ? value : void 0;
+}
+
+// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.54.0/node_modules/@rafaelsilvalor/tyto-core/dist/template.js
+function base(options) {
+  return {
+    transform: { ...identityTransform, ...options.transform },
     opacity: options.opacity ?? 1,
     blend: options.blend ?? "normal",
     visible: options.visible ?? true,
@@ -24076,9 +22289,51 @@ function base2(options) {
     ...options.mask !== void 0 ? { mask: options.mask } : {}
   };
 }
-function vector2(options) {
+function rect(options) {
+  const radius = options.radius ?? 0;
   return {
-    ...base2(options),
+    ...base(options),
+    kind: "rect",
+    size: options.size,
+    radius: typeof radius === "number" ? [radius, radius, radius, radius] : [...radius],
+    ...options.id !== void 0 ? { id: options.id } : {},
+    ...options.fill !== void 0 ? { fill: options.fill } : {},
+    ...options.stroke !== void 0 ? { stroke: options.stroke } : {}
+  };
+}
+function text(options) {
+  return {
+    ...base(options),
+    kind: "text",
+    runs: [...options.runs],
+    box: {
+      ...options.box?.w !== void 0 ? { w: options.box.w } : {},
+      ...options.box?.h !== void 0 ? { h: options.box.h } : {}
+    },
+    align: options.align ?? "left",
+    valign: options.valign ?? "top",
+    lineHeight: options.lineHeight ?? 1.2,
+    letterSpacing: options.letterSpacing ?? 0,
+    // `clip` is the only overflow that needs no measurement, so it is what a template
+    // that says nothing gets; `shrink` and `grow` are choices, and E4.5 acts on them.
+    overflow: options.overflow ?? "clip",
+    ...options.id !== void 0 ? { id: options.id } : {}
+  };
+}
+function image(options) {
+  return {
+    ...base(options),
+    kind: "image",
+    asset: options.asset,
+    size: options.size,
+    fit: options.fit ?? "cover",
+    position: options.position ?? { x: 0.5, y: 0.5 },
+    ...options.id !== void 0 ? { id: options.id } : {}
+  };
+}
+function vector(options) {
+  return {
+    ...base(options),
     kind: "vector",
     geometry: options.geometry,
     size: options.size,
@@ -24087,16 +22342,78 @@ function vector2(options) {
     ...options.stroke !== void 0 ? { stroke: options.stroke } : {}
   };
 }
-function group2(options) {
+function group(options) {
   return {
-    ...base2(options),
+    ...base(options),
     kind: "group",
     children: [...options.children],
     ...options.id !== void 0 ? { id: options.id } : {}
   };
 }
+function assignIds(drafts, prefix) {
+  return drafts.map((draft, index) => {
+    const id = draft.id ?? `${prefix}.${index}`;
+    switch (draft.kind) {
+      case "group":
+        return { ...draft, id, children: assignIds(draft.children, id) };
+      case "rect":
+        return { ...draft, id };
+      case "text":
+        return { ...draft, id };
+      case "image":
+        return { ...draft, id };
+      case "vector":
+        return { ...draft, id };
+    }
+  });
+}
+function frame(options) {
+  return {
+    format: options.format,
+    size: options.size,
+    children: assignIds(options.children ?? [], options.idPrefix ?? options.format),
+    ...options.background !== void 0 ? { background: options.background } : {}
+  };
+}
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.11.7/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.6.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-3KKHXN6D.js
+var PAPER = "#fbfbfb";
+var INK = "#000000";
+var ZEBRA = "#f2f2f4";
+var ON_ACCENT = "#ffffff";
+var SIGNATURE_INK = "#8c8ca1";
+var TITLE = {
+  /** Line box, as a multiple of the size: tight, as display type is set. */
+  lineHeight: 1.06,
+  tracking: -0.01,
+  /** The most lines the title may take before it is set smaller. */
+  maxLines: 3,
+  /** The smallest the title is set, whatever the table needs. */
+  floor: 40,
+  ceiling: 96,
+  /**
+   * The title is never more than this many times the body size, so a short table does not
+   * sit under a shouting title. 62 over 22: the approved table art.
+   */
+  perBody: 62 / 22,
+  /** Room on each side of the title, inside the page's. */
+  inset: 20,
+  /** Title → table. */
+  gap: 20
+};
+var BODY = {
+  /** The readable floor: below it the table is drawn anyway, and reported (ADR 0058). */
+  floor: 16,
+  ceiling: 34,
+  /** The fit loop's resolution, in px. */
+  step: 0.5,
+  lineHeight: 1.25,
+  /** Padding inside a cell, in em. */
+  padding: { block: 0.8, inline: 0.5 }
+};
+var OPTICAL_DROP = 0.15;
+
+// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.13.0/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
 function shifted(draft, dx, dy) {
   const transform2 = {
     ...draft.transform,
@@ -24224,11 +22541,11 @@ function mark(shape, height, fill, name) {
   return block(
     shape.box.w * scale,
     height,
-    vector2({
+    vector({
       name,
       geometry: { kind: "path", d: shape.d, fillRule: shape.fillRule },
       size: shape.box,
-      fill: solid2(fill),
+      fill: solid(fill),
       transform: { scaleX: scale, scaleY: scale }
     })
   );
@@ -24325,7 +22642,7 @@ function pieceStarts(text2) {
     if (text2[index] === " " || index > 0 && text2[index - 1] !== " ") continue;
     const end = text2.indexOf(" ", index);
     const word = text2.slice(index, end < 0 ? void 0 : end);
-    if (starts.length === 0 || !isStandaloneOperator2(word)) starts.push(index);
+    if (starts.length === 0 || !isStandaloneOperator(word)) starts.push(index);
   }
   return starts;
 }
@@ -24336,23 +22653,29 @@ function withBreakBefore(runs, paragraph, piece) {
   let current = 0;
   let offset = 0;
   let done = false;
-  for (const run3 of runs) {
-    if (run3.kind === "break") {
+  for (const run2 of runs) {
+    if (run2.kind === "break") {
       current += 1;
-      result.push(run3);
+      result.push(run2);
       continue;
     }
     const start = offset;
-    if (current === paragraph) offset += run3.text.length;
+    if (current === paragraph) offset += textOf(run2).length;
     if (done || current !== paragraph || cut2 >= offset) {
-      result.push(run3);
+      result.push(run2);
+      continue;
+    }
+    if (run2.kind === "formula") {
+      trimLast(result);
+      result.push({ kind: "break" }, run2);
+      done = true;
       continue;
     }
     const at2 = cut2 - start;
-    const head = run3.text.slice(0, at2).replace(/ +$/u, "");
-    if (head !== "") result.push({ ...run3, text: head });
+    const head = run2.text.slice(0, at2).replace(/ +$/u, "");
+    if (head !== "") result.push({ ...run2, text: head });
     else trimLast(result);
-    result.push({ kind: "break" }, { ...run3, text: run3.text.slice(at2) });
+    result.push({ kind: "break" }, { ...run2, text: run2.text.slice(at2) });
     done = true;
   }
   return result;
@@ -24364,11 +22687,15 @@ function trimLast(runs) {
   if (text2 === "") runs.pop();
   else runs[runs.length - 1] = { ...last, text: text2 };
 }
+var FORMULA_TEXT = "\uFFFC";
+function textOf(run2) {
+  return run2.kind === "formula" ? FORMULA_TEXT : run2.text;
+}
 function linesOf(runs) {
   const lines2 = [""];
-  for (const run3 of runs) {
-    if (run3.kind === "break") lines2.push("");
-    else lines2[lines2.length - 1] += run3.text;
+  for (const run2 of runs) {
+    if (run2.kind === "break") lines2.push("");
+    else lines2[lines2.length - 1] += textOf(run2);
   }
   return lines2;
 }
@@ -24377,7 +22704,7 @@ function wordsOf(line) {
 }
 function reportOrphan(report, word) {
   if (word !== void 0)
-    report({ code: "W_TEMPLATE_ORPHAN", word: [...word].slice(0, ORPHAN_WORD_LIMIT2).join("") });
+    report({ code: "W_TEMPLATE_ORPHAN", word: [...word].slice(0, ORPHAN_WORD_LIMIT).join("") });
 }
 function lines(text2) {
   const result = [];
@@ -24406,7 +22733,7 @@ function plain(text2) {
   }).join("");
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.5.9/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-EIGOHDOF.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.6.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-EIGOHDOF.js
 var PLACEHOLDER_LOGO = {
   box: { w: 186.09, h: 376.79 },
   d: (
@@ -24420,19 +22747,19 @@ function oneInk(ink) {
   return { primary: ink, secondary: ink };
 }
 function drawBrandMark(shape, height, inks, name) {
-  if (!isTonedMark2(shape)) return mark(shape, height, inks.primary, name);
+  if (!isTonedMark(shape)) return mark(shape, height, inks.primary, name);
   const scale = height / shape.box.h;
   return block(
     shape.box.w * scale,
     height,
-    group2({
+    group({
       name,
       children: shape.layers.map(
-        (layer) => vector2({
+        (layer) => vector({
           name: `${name}-${layer.tone}`,
           geometry: { kind: "path", d: layer.d, fillRule: layer.fillRule },
           size: shape.box,
-          fill: solid2(inks[layer.tone]),
+          fill: solid(inks[layer.tone]),
           transform: { scaleX: scale, scaleY: scale }
         })
       )
@@ -24446,10 +22773,10 @@ function signatureOf(kit) {
   return kit.signature ?? PLACEHOLDER_SIGNATURE;
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.5.9/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.6.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
 var TITLE_INK = "#7c7c7c";
 var ROW_INK = "#393939";
-var FACE = systemFont2("CircularXX");
+var FACE = systemFont("CircularXX");
 var BOOK = 400;
 var BOLD2 = 700;
 var TYPE = {
@@ -24472,11 +22799,11 @@ var ROXO = {
   signOff: { kind: "note", text: "Clique no link para mais informa\xE7\xF5es" }
 };
 var ROXO_TABLE = { accent: ROXO.accent };
-var style = (size, weight, color3) => ({
+var style = (size, weight, color2) => ({
   font: FACE,
   size,
   weight,
-  color: color3
+  color: color2
 });
 var EXAM_STYLE = style(TYPE.exam, BOOK, ROW_INK);
 var TITLE_STYLE = style(TYPE.title, BOLD2, TITLE_INK);
@@ -24682,11 +23009,11 @@ var build = (context) => {
   });
 };
 function card(context, ink, top, sheet) {
-  const tab = (name, d, color3) => vector({
+  const tab = (name, d, color2) => vector({
     name,
     geometry: { kind: "path", d, fillRule: "nonzero" },
     size: { w: SLIDE.w, h: CARD.tabs + 35 },
-    fill: solid(color3)
+    fill: solid(color2)
   });
   return group({
     name: "cartao",
@@ -25160,10 +23487,10 @@ function unfilledOf(context, node2) {
   const measured = context.measure(node2);
   if (box === void 0 || measured === void 0) return void 0;
   const paragraphs = [[[]]];
-  for (const run3 of measured.runs) {
+  for (const run2 of measured.runs) {
     const lines3 = paragraphs.at(-1);
-    if (run3.kind === "break") lines3.push([]);
-    else lines3.at(-1).push(run3);
+    if (run2.kind === "break") lines3.push([]);
+    else lines3.at(-1).push(run2);
   }
   const lines2 = paragraphs[0].filter((line) => line.length > 0);
   const widthOf = (line) => {
