@@ -298,4 +298,22 @@ describe('the back cover', () => {
     const { top, height } = cardBox(contextOf({}, { contracapa: true }));
     expect(Math.abs(top + height / 2 - 675)).toBeLessThanOrEqual(1);
   });
+
+  it('draws comment, share and save at the reference’s steps, the two smaller ones 4 px lower', () => {
+    // Read at their places on the slide: since TYTO-884 each icon sits in a button of the kit's
+    // row, and its own transform is only its place in the button.
+    const placed = (nodes: readonly Node[], x = 0, y = 0): (Node & { x: number; y: number })[] =>
+      nodes.flatMap((node) => {
+        const here = { x: x + (node.transform?.x ?? 0), y: y + (node.transform?.y ?? 0) };
+        return [{ ...node, ...here }, ...placed(node.children ?? [], here.x, here.y)];
+      });
+    const all = placed(frameOf(contextOf({}, { contracapa: true })).children);
+    const [comment, share, save] = ['comentar', 'compartilhar', 'salvar'].map((name) =>
+      all.find((node) => node.name === name)!,
+    );
+
+    expect(comment!.x).toBe(461);
+    expect([share!.x - comment!.x, save!.x - comment!.x]).toEqual([66, 130]);
+    expect([share!.y - comment!.y, save!.y - comment!.y]).toEqual([4, 4]);
+  });
 });

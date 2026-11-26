@@ -58,6 +58,8 @@ import {
   KEEP_TOGETHER_RULES,
   ORPHAN_LIMITS,
   at,
+  block,
+  buttonRow,
   keepTogether,
   lines,
   plain,
@@ -977,38 +979,53 @@ function heart(ink: Ink, y: number): readonly NodeDraft[] {
 function icons(ink: Ink, y: number): readonly NodeDraft[] {
   const { x } = BACK.icons;
   const stroke = { paint: solid(ink('ink')), width: 4, align: 'center' as const };
-  return [
-    vector({
-      name: 'comentar',
-      geometry: {
-        kind: 'path',
-        d:
-          'M24 4C12 4 3 12 3 22C3 32 12 40 24 40C27 40 30 39 33 38L44 44L41 34C44 31 45 27 45 22' +
+  // Three buttons of the kit's `buttonRow`, each an icon alone (TYTO-884). The reference sets
+  // them 66 and 130 px apart from the first and the two smaller ones 4 px down; a block as wide
+  // as the step to the next icon, less the gap, and as tall as the row, holds each icon at its
+  // own offset, so the spacing and the nudge stay the reference's.
+  const ROW = 48;
+  const GAP = 18;
+  const glyph = (
+    name: string,
+    d: string,
+    size: number | { readonly w: number; readonly h: number },
+    width: number,
+    down: number,
+  ) => {
+    const box = typeof size === 'number' ? { w: size, h: size } : size;
+    return {
+      name: `${name}-botao`,
+      style: { height: ROW, radius: 0, padding: { left: 0, right: 0 }, gap: 0 },
+      leading: block(
+        width,
+        ROW,
+        vector({
+          name,
+          geometry: { kind: 'path', d, fillRule: 'nonzero' },
+          size: box,
+          stroke,
+          fill: NO_FILL,
+          transform: { x: 0, y: down },
+        }),
+      ),
+    };
+  };
+  const row = buttonRow(
+    [
+      glyph(
+        'comentar',
+        'M24 4C12 4 3 12 3 22C3 32 12 40 24 40C27 40 30 39 33 38L44 44L41 34C44 31 45 27 45 22' +
           'C45 12 36 4 24 4Z',
-        fillRule: 'nonzero',
-      },
-      size: { w: 48, h: 48 },
-      stroke,
-      fill: NO_FILL,
-      transform: { x, y },
-    }),
-    vector({
-      name: 'compartilhar',
-      geometry: { kind: 'path', d: 'M38 3L3 16L18 22L24 38L38 3ZM18 22L38 3', fillRule: 'nonzero' },
-      size: { w: 42, h: 42 },
-      stroke,
-      fill: NO_FILL,
-      transform: { x: x + 66, y: y + 4 },
-    }),
-    vector({
-      name: 'salvar',
-      geometry: { kind: 'path', d: 'M3 3H27V37L15 27L3 37Z', fillRule: 'nonzero' },
-      size: { w: 30, h: 40 },
-      stroke,
-      fill: NO_FILL,
-      transform: { x: x + 130, y: y + 4 },
-    }),
-  ];
+        48,
+        66 - GAP,
+        0,
+      ),
+      glyph('compartilhar', 'M38 3L3 16L18 22L24 38L38 3ZM18 22L38 3', 42, 130 - 66 - GAP, 4),
+      glyph('salvar', 'M3 3H27V37L15 27L3 37Z', { w: 30, h: 40 }, 30, 4),
+    ],
+    { gap: GAP, name: 'icones' },
+  );
+  return [at(x, y, row)];
 }
 
 /* -------------------------------------------------------------------------- the shared -- */
