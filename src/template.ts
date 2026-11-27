@@ -51,24 +51,27 @@ import {
   runsOf,
   solid,
   text,
-  vector,
 } from '@tyto/core/template';
 import { drawLogo, oneInk, signatureOf } from '@tyto/house-style';
 import {
   KEEP_TOGETHER_RULES,
   ORPHAN_LIMITS,
   at,
+  barePicture,
   block,
   buttonRow,
+  icon,
+  iconInDisc,
   keepTogether,
   lines,
   plain,
   reportOrphan,
   reportOverflow,
   settle,
+  shape,
 } from '@tyto/template-kit';
 
-import type { KeepTogetherRule } from '@tyto/template-kit';
+import type { Icon, KeepTogetherRule } from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -182,9 +185,6 @@ const METRICS = {
 
 type Family = keyof typeof METRICS;
 
-/** A shape drawn by its outline only. */
-const NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
-
 function capOffset(family: Family, size: number, lineHeight: number): number {
   const m = METRICS[family];
   return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
@@ -209,6 +209,81 @@ const CARD = {
   tabs: 69.6,
 } as const;
 
+/**
+ * A shape of the reference's, held as data: its outline in a box, and where that box stands on
+ * the card, in the slide's x and in y from the tabs' top.
+ *
+ * The tabs and the arrows are still outlined in the slide's x, in a box as wide as the slide:
+ * the card's shadow is cast from a layer as large as the boxes it holds, and Chrome sets every
+ * edge in that layer a fraction of a pixel differently when the boxes change (measured,
+ * TYTO-894). Giving each its own box is a change to the art, made apart.
+ */
+interface Piece {
+  readonly x: number;
+  readonly y: number;
+  readonly shape: Icon;
+}
+
+/** The tabs (the reference's shapes); each runs 34.7 px under the sheet, so no seam shows. */
+const TAB_BOX = { w: SLIDE.w, h: CARD.tabs + 35 } as const;
+const FRONT_TAB: Piece = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: TAB_BOX,
+    d:
+      'M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0' +
+      'H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z',
+    paint: { kind: 'fill' },
+  },
+};
+const BACK_TAB: Piece = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: TAB_BOX,
+    d:
+      'M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0' +
+      'H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z',
+    paint: { kind: 'fill' },
+  },
+};
+
+/**
+ * The ruling's arrow on the back tab: on to the next slide. The reference's own outline, not
+ * the kit's `arrowShape`: its head is centred 0.05 px under its shaft (37.95 against 37.9), and
+ * a symmetric arrow would move it.
+ */
+const ARROW_BOX = { w: SLIDE.w, h: CARD.tabs } as const;
+const ARROW_ON: Piece = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: ARROW_BOX,
+    d: 'M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z',
+    paint: { kind: 'fill' },
+  },
+};
+/** The back cover's arrow: down, to the comments. */
+const ARROW_DOWN: Piece = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: ARROW_BOX,
+    d: 'M690 20H718V40H727L712 57L697 40H706V28H690Z',
+    paint: { kind: 'fill' },
+  },
+};
+
+/** The back cover's heart, filled, in its disc's own box. */
+const HEART: Icon = {
+  box: { w: 192, h: 192 },
+  d:
+    'M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46' +
+    'C135 46 150 58 150 78C150 112 96 150 96 150Z',
+  paint: { kind: 'fill' },
+};
+
 /** Inside the sheet, every left edge and width the reference uses. */
 const INNER = {
   bandX: 109,
@@ -222,19 +297,6 @@ const INNER = {
    */
   questionW: 762,
 } as const;
-
-/** The tabs, as paths in the slide's x and in y from their top (the reference's shapes). */
-const FRONT_TAB =
-  'M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0' +
-  'H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z';
-const BACK_TAB =
-  'M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0' +
-  'H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z';
-
-/** The ruling's arrow on the back tab: on to the next slide. */
-const ARROW_ON = 'M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z';
-/** The back cover's arrow: down, to the comments. */
-const ARROW_DOWN = 'M690 20H718V40H727L712 57L697 40H706V28H690Z';
 
 /** The signature on the front tab: Light 30 px, its capitals 22 px under the tabs' top. */
 const SIGNATURE = { x: 215, capTop: 22, size: 30 } as const;
@@ -343,12 +405,27 @@ export const build: TemplateBuild = (context: TemplateContext) => {
     children: [
       ...(background === undefined
         ? []
-        : [image({ name: 'fundo', asset: background, size: context.size, fit: 'cover' })]),
+        : [
+            barePicture(
+              background,
+              { width: context.size.w, height: context.size.h },
+              // Held to the slide's own shape, so the picture is the slide's size whatever
+              // the file's.
+              {
+                fit: 'cover',
+                widest: context.size.w / context.size.h,
+                tallest: context.size.w / context.size.h,
+              },
+              { name: 'fundo' },
+            ).draft,
+          ]),
       at(LOGO.x, LOGO.y, drawLogo(context.brand, LOGO.height, oneInk(ink('logo')))),
       card(context, ink, top, sheet),
       ...(paper === undefined
         ? []
         : [
+            // The kit's `barePicture` takes no blend mode (TYTO-910); until it does, the paper
+            // is the one image this template draws with the core's node.
             image({
               name: 'papel',
               asset: paper,
@@ -366,7 +443,7 @@ export const build: TemplateBuild = (context: TemplateContext) => {
 interface Sheet {
   readonly height: number;
   /** The arrow on the back tab. */
-  readonly arrow: string;
+  readonly arrow: Piece;
   /** Everything on the sheet, in y from the sheet's top. */
   readonly children: readonly NodeDraft[];
   /** The texts `settle` reads for an orphan, by field name. */
@@ -385,13 +462,11 @@ type Tunings = ReadonlyMap<string, Tuning>;
 type Ink = (name: ColorName) => string;
 
 function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): NodeDraft {
-  const tab = (name: string, d: string, color: string): NodeDraft =>
-    vector({
-      name,
-      geometry: { kind: 'path', d, fillRule: 'nonzero' },
-      size: { w: SLIDE.w, h: CARD.tabs + 35 },
-      fill: solid(color),
-    });
+  const drawn = (name: string, piece: Piece, color: string): NodeDraft =>
+    at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color, name));
+  // The shadow is the whole card's, tabs and sheet as one outline, and no kit piece casts one
+  // from a group: `paddedCard` casts it from its own surface alone. Until the card is that
+  // piece, this group is the one the template makes with the core's node.
   return group({
     name: 'cartao',
     transform: { x: 0, y: top },
@@ -406,14 +481,9 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
       },
     ],
     children: [
-      tab('aba-tras', BACK_TAB, ink('back-tab')),
-      vector({
-        name: 'seta',
-        geometry: { kind: 'path', d: sheet.arrow, fillRule: 'nonzero' },
-        size: { w: SLIDE.w, h: CARD.tabs },
-        fill: solid(ink('ink')),
-      }),
-      tab('aba-frente', FRONT_TAB, ink('card')),
+      drawn('aba-tras', BACK_TAB, ink('back-tab')),
+      drawn('seta', sheet.arrow, ink('ink')),
+      drawn('aba-frente', FRONT_TAB, ink('card')),
       plainText('assinatura', signatureOf(context.brand), {
         family: 'Roboto',
         font: SANS,
@@ -423,13 +493,16 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
         weight: LIGHT,
         color: ink('ink'),
       }),
-      rect({
-        name: 'folha',
-        size: { w: CARD.w, h: sheet.height },
-        radius: CARD.radius,
-        fill: solid(ink('card')),
-        transform: { x: CARD.x, y: CARD.tabs },
-      }),
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink('card')),
+          { kind: 'rounded', radius: CARD.radius },
+          { name: 'folha' },
+        ),
+      ),
       group({ name: 'conteudo', transform: { y: CARD.tabs }, children: sheet.children }),
     ],
   });
@@ -597,13 +670,16 @@ function band(
 ): readonly NodeDraft[] {
   const radius = 6;
   return [
-    rect({
-      name,
-      size: { w: INNER.bandW, h: height },
-      radius,
-      fill: solid(ink('accent-edge')),
-      transform: { x: INNER.bandX, y },
-    }),
+    at(
+      INNER.bandX,
+      y,
+      shape(
+        { w: INNER.bandW, h: height },
+        solid(ink('accent-edge')),
+        { kind: 'rounded', radius },
+        { name },
+      ),
+    ),
     rect({
       name: `${name}-corpo`,
       size:
@@ -954,31 +1030,25 @@ function backCover(context: TemplateContext, ink: Ink): Sheet {
 
 function heart(ink: Ink, y: number): readonly NodeDraft[] {
   const { x, d } = BACK.heart;
-  const shape =
-    'M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46' +
-    'C135 46 150 58 150 78C150 112 96 150 96 150Z';
   return [
-    rect({
-      name: 'coracao-fundo',
-      size: { w: d, h: d },
-      radius: d / 2,
-      fill: solid(ink('accent')),
-      transform: { x, y },
-    }),
-    vector({
-      name: 'coracao',
-      geometry: { kind: 'path', d: shape, fillRule: 'nonzero' },
-      size: { w: d, h: d },
-      fill: solid(ink('card')),
-      transform: { x, y },
-    }),
+    at(
+      x,
+      y,
+      iconInDisc(
+        HEART,
+        d,
+        { disc: ink('accent'), icon: ink('card') },
+        { iconRatio: 1 },
+        { name: 'coracao-disco', discName: 'coracao-fundo', iconName: 'coracao' },
+      ),
+    ),
   ];
 }
 
 /** Comment, share and save, outlined in the ink. */
 function icons(ink: Ink, y: number): readonly NodeDraft[] {
   const { x } = BACK.icons;
-  const stroke = { paint: solid(ink('ink')), width: 4, align: 'center' as const };
+  const outlined = { kind: 'stroke', width: 4 } as const;
   // Three buttons of the kit's `buttonRow`, each an icon alone (TYTO-884). The reference sets
   // them 66 and 130 px apart from the first and the two smaller ones 4 px down; a block as wide
   // as the step to the next icon, less the gap, and as tall as the row, holds each icon at its
@@ -993,21 +1063,11 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
     down: number,
   ) => {
     const box = typeof size === 'number' ? { w: size, h: size } : size;
+    const outline: Icon = { box, d, paint: outlined };
     return {
       name: `${name}-botao`,
       style: { height: ROW, radius: 0, padding: { left: 0, right: 0 }, gap: 0 },
-      leading: block(
-        width,
-        ROW,
-        vector({
-          name,
-          geometry: { kind: 'path', d, fillRule: 'nonzero' },
-          size: box,
-          stroke,
-          fill: NO_FILL,
-          transform: { x: 0, y: down },
-        }),
-      ),
+      leading: block(width, ROW, at(0, down, icon(outline, box.h, ink('ink'), name))),
     };
   };
   const row = buttonRow(

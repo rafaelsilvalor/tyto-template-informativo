@@ -1025,9 +1025,9 @@ function stringifyPrimitive(value) {
     return `"${value}"`;
   return `${value}`;
 }
-function optionalKeys(shape) {
-  return Object.keys(shape).filter((k) => {
-    return shape[k]._zod.optin !== void 0 && shape[k]._zod.optout === "optional";
+function optionalKeys(shape2) {
+  return Object.keys(shape2).filter((k) => {
+    return shape2[k]._zod.optin !== void 0 && shape2[k]._zod.optout === "optional";
   });
 }
 var NUMBER_FORMAT_RANGES = /* @__PURE__ */ (() => ({
@@ -1076,33 +1076,33 @@ function omit(schema, mask) {
   mirrorShape(newShape, schema, Reflect.ownKeys(sourceShape(schema)).filter((key) => !omitted.has(key)));
   return clone(schema, mergeDefs(currDef, { shape: newShape, checks: [] }));
 }
-function extend(schema, shape) {
-  if (!isPlainObject(shape)) {
+function extend(schema, shape2) {
+  if (!isPlainObject(shape2)) {
     throw new Error("Invalid input to extend: expected a plain object");
   }
   const checks = schema._zod.def.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     const existingShape = sourceShape(schema);
-    for (const key of Reflect.ownKeys(shape)) {
+    for (const key of Reflect.ownKeys(shape2)) {
       if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
         throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
       }
     }
   }
-  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape) }));
+  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape2) }));
 }
-function extended(schema, shape) {
+function extended(schema, shape2) {
   const newShape = {};
   mirrorShape(newShape, schema, Reflect.ownKeys(sourceShape(schema)));
-  mirrorProps(newShape, shape);
+  mirrorProps(newShape, shape2);
   return newShape;
 }
-function safeExtend(schema, shape) {
-  if (!isPlainObject(shape)) {
+function safeExtend(schema, shape2) {
+  if (!isPlainObject(shape2)) {
     throw new Error("Invalid input to safeExtend: expected a plain object");
   }
-  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape) }));
+  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape2) }));
 }
 function merge(a, b) {
   if (!b?._zod?.def) {
@@ -3550,10 +3550,10 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   }
   const _normalized = cached(() => normalizeDef(def));
   defineLazyInternal(inst, "propValues", (zod) => {
-    const shape = zod.def.shape;
+    const shape2 = zod.def.shape;
     const propValues = {};
-    for (const key in shape) {
-      const field = shape[key]._zod;
+    for (const key in shape2) {
+      const field = shape2[key]._zod;
       if (field.values) {
         if (!Object.prototype.hasOwnProperty.call(propValues, key)) {
           assignProp(propValues, key, /* @__PURE__ */ new Set());
@@ -3585,7 +3585,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     }
     payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx) : {};
     const proms = [];
-    const shape = value.shape;
+    const shape2 = value.shape;
     const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const key of value.allKeys) {
@@ -3596,7 +3596,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       }
       if (key === "__proto__")
         continue;
-      const el = shape[key];
+      const el = shape2[key];
       const optin = el._zod.optin;
       const optout = el._zod.optout;
       const r = el._zod.run({ value: input2[key], issues: [] }, ctx);
@@ -3617,10 +3617,10 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   const superParse = inst._zod.parse;
   const _normalized = cached(() => normalizeDef(def));
   const memo2 = globalConfig.memoizer;
-  const generateFastpass = (shape) => {
+  const generateFastpass = (shape2) => {
     const normalized = _normalized.value;
     const syms = normalized.symbolKeys;
-    const doc = new Doc(["payload", "ctx"], { shape, inst, memo: memo2, syms });
+    const doc = new Doc(["payload", "ctx"], { shape: shape2, inst, memo: memo2, syms });
     const parseStr = (k) => `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
     const prefixStr = (id, k) => `
           let ${id}_ab = false;
@@ -3647,7 +3647,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
       const id = ids[key];
       const k = typeof key === "symbol" ? `syms[${syms.indexOf(key)}]` : esc(key);
       const isPresent = `${k} in input`;
-      const schema = shape[key];
+      const schema = shape2[key];
       const optin = schema?._zod?.optin;
       const isOptionalIn = optin !== void 0;
       const isOptionalOut = schema?._zod?.optout === "optional";
@@ -5086,7 +5086,7 @@ function isRecursive(inst, stack2, resolve) {
         result = answer;
     }
   };
-  const shape = (sh, spread) => {
+  const shape2 = (sh, spread) => {
     let answer = NONE;
     for (const key of Reflect.ownKeys(sh)) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
@@ -5107,7 +5107,7 @@ function isRecursive(inst, stack2, resolve) {
   switch (kind) {
     case "object": {
       const raw = rawShape(def);
-      merge2(raw ? shape(raw, true) : ASSUMED);
+      merge2(raw ? shape2(raw, true) : ASSUMED);
       check2(def.catchall);
       break;
     }
@@ -13318,12 +13318,12 @@ function generatePropertiesChecks(doc, ctx, def, accessor) {
     throw new ZodCompileUnsupportedError(`check with a custom "when" condition`);
   }
   doc.write(`if (${accessor} == null) return INVALID;`);
-  const shape = def.shape;
-  for (const key of Reflect.ownKeys(shape)) {
+  const shape2 = def.shape;
+  for (const key of Reflect.ownKeys(shape2)) {
     const keyExpr = typeof key === "symbol" ? addConstant(ctx, key) : esc(key);
     const inputVar = newVar(ctx);
     doc.write(`const ${inputVar} = ${accessor}[${keyExpr}];`);
-    compileChild(doc, ctx, shape[key], inputVar, false);
+    compileChild(doc, ctx, shape2[key], inputVar, false);
   }
 }
 function generatePropertyCheck(doc, ctx, def, accessor) {
@@ -13705,13 +13705,13 @@ function generateDateCheck(doc, accessor) {
 function generateObjectCheck(doc, ctx, schema, accessor, buildsValue = true) {
   const def = schema._zod.def;
   doc.write(`if (typeof ${accessor} !== "object" || ${accessor} === null || Array.isArray(${accessor})) return INVALID;`);
-  const shape = def.shape;
-  const keys = Object.keys(shape);
-  const symbolKeys = Object.getOwnPropertySymbols(shape);
+  const shape2 = def.shape;
+  const keys = Object.keys(shape2);
+  const symbolKeys = Object.getOwnPropertySymbols(shape2);
   const allKeys = symbolKeys.length ? [...keys, ...symbolKeys] : keys;
   const keyExpr = (k) => typeof k === "symbol" ? addConstant(ctx, k) : esc(k);
   const propKey = (k) => typeof k === "symbol" ? `[${keyExpr(k)}]` : esc(k);
-  const propShape = shape;
+  const propShape = shape2;
   if (keys.includes("__proto__")) {
     throw new ZodCompileUnsupportedError('object shape key "__proto__"');
   }
@@ -15218,10 +15218,10 @@ function _property(property, schema, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _properties(shape, params) {
+function _properties(shape2, params) {
   return new $ZodCheckProperties({
     check: "properties",
-    shape,
+    shape: shape2,
     ...normalizeParams(params)
   });
 }
@@ -16483,21 +16483,21 @@ function inputOptin(schema) {
 var objectProcessor = (schema, ctx, _json, params) => {
   const json2 = _json;
   const def = schema._zod.def;
-  const shape = def.shape;
-  const symbolKeys = Object.getOwnPropertySymbols(shape);
+  const shape2 = def.shape;
+  const symbolKeys = Object.getOwnPropertySymbols(shape2);
   if (symbolKeys.length && handleUnrepresentable(schema, ctx, json2, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
   json2.type = "object";
   json2.properties = {};
-  for (const key in shape) {
-    assignProp(json2.properties, key, processSchema(shape[key], ctx, {
+  for (const key in shape2) {
+    assignProp(json2.properties, key, processSchema(shape2[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
   }
   const requiredKeys = [];
-  for (const key of Object.keys(shape)) {
+  for (const key of Object.keys(shape2)) {
     const field = def.shape[key];
     if (ctx.io === "input" ? inputOptin(field) === void 0 : field._zod.optout === void 0) {
       requiredKeys.push(key);
@@ -18059,8 +18059,8 @@ function array(element, params) {
   return _array(ZodArray, element, params);
 }
 function keyof(schema) {
-  const shape = schema._zod.def.shape;
-  return _enum2(Object.keys(shape));
+  const shape2 = schema._zod.def.shape;
+  return _enum2(Object.keys(shape2));
 }
 var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
@@ -18112,26 +18112,26 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
     return util_exports.required(ZodNonOptional, this, args[0]);
   }
 });
-function object(shape, params) {
+function object(shape2, params) {
   const def = {
     type: "object",
-    shape: shape ?? {},
+    shape: shape2 ?? {},
     ...util_exports.normalizeParams(params)
   };
   return new ZodObject(def);
 }
-function strictObject(shape, params) {
+function strictObject(shape2, params) {
   return new ZodObject({
     type: "object",
-    shape,
+    shape: shape2,
     catchall: never(),
     ...util_exports.normalizeParams(params)
   });
 }
-function looseObject(shape, params) {
+function looseObject(shape2, params) {
   return new ZodObject({
     type: "object",
-    shape,
+    shape: shape2,
     catchall: unknown(),
     ...util_exports.normalizeParams(params)
   });
@@ -18670,8 +18670,8 @@ var meta2 = meta;
 var ZodInstanceOf = /* @__PURE__ */ $constructor("ZodInstanceOf", (inst, def) => {
   ZodCustom.init(inst, def);
 }, {
-  properties(shape, params) {
-    return this.check(_properties(shape, params));
+  properties(shape2, params) {
+    return this.check(_properties(shape2, params));
   }
 });
 function _instanceof(cls, params = {}) {
@@ -19257,13 +19257,13 @@ function convertBaseSchema(schema, ctx) {
       break;
     }
     case "object": {
-      const shape = {};
+      const shape2 = {};
       const properties = schema.properties || {};
       const requiredSet = new Set(schema.required || []);
       const additionalSchema = typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : void 0;
       for (const [key, propSchema] of Object.entries(properties)) {
         const propZodSchema = convertSchema(propSchema, ctx);
-        assignProp(shape, key, requiredSet.has(key) ? propZodSchema : propZodSchema.optional());
+        assignProp(shape2, key, requiredSet.has(key) ? propZodSchema : propZodSchema.optional());
       }
       if (schema.patternProperties) {
         const patternProps = schema.patternProperties;
@@ -19275,8 +19275,8 @@ function convertBaseSchema(schema, ctx) {
           looseRecords.push(z.looseRecord(keySchema, patternValue));
         }
         const schemasToIntersect = [];
-        if (Object.keys(shape).length > 0) {
-          schemasToIntersect.push(z.object(shape).passthrough());
+        if (Object.keys(shape2).length > 0) {
+          schemasToIntersect.push(z.object(shape2).passthrough());
         }
         schemasToIntersect.push(...looseRecords);
         if (schemasToIntersect.length === 0) {
@@ -19291,7 +19291,7 @@ function convertBaseSchema(schema, ctx) {
           zodSchema = result;
         }
         if (schema.additionalProperties === false) {
-          const propertyKeys = Object.keys(shape);
+          const propertyKeys = Object.keys(shape2);
           const patterns = patternKeys.map((p) => new RegExp(p));
           const basePatternSchema = zodSchema;
           zodSchema = zodSchema.check((payload) => {
@@ -19316,7 +19316,7 @@ function convertBaseSchema(schema, ctx) {
           });
         }
       } else {
-        const objectSchema = z.object(shape);
+        const objectSchema = z.object(shape2);
         if (schema.additionalProperties === false) {
           zodSchema = objectSchema.strict();
         } else if (additionalSchema) {
@@ -22508,6 +22508,9 @@ function shifted(draft, dx, dy) {
 function block(width, height, draft) {
   return { width, height, draft };
 }
+function sized(draft) {
+  return { width: draft.size.w, height: draft.size.h, draft };
+}
 function at(x, y, item) {
   return shifted(item.draft, x, y);
 }
@@ -22536,6 +22539,40 @@ function plain(text5) {
         return plain(inline.children);
     }
   }).join("");
+}
+var SHAPE_PARAMETERS = {
+  kind: {
+    kind: "choice",
+    default: "rect",
+    choices: ["rect", "rounded", "capsule", "circle"],
+    description: "A rectangle, one with rounded corners, one rounded whole at its short ends, or a circle."
+  },
+  radius: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The corners' radius for `rounded`; the others ignore it."
+  }
+};
+function shape(size, fill, given = {}, options = {}) {
+  const values = parameterValues(SHAPE_PARAMETERS, given);
+  const box = values.kind === "circle" ? { w: size.w, h: size.w } : size;
+  const radius = values.kind === "rounded" ? values.radius : values.kind === "capsule" ? Math.min(box.w, box.h) / 2 : values.kind === "circle" ? box.w / 2 : 0;
+  return sized(
+    rect({
+      ...options.name === void 0 ? {} : { name: options.name },
+      size: box,
+      ...radius === 0 ? {} : { radius },
+      ...fill === void 0 ? {} : { fill },
+      ...options.outline === void 0 ? {} : {
+        stroke: {
+          paint: options.outline.paint,
+          width: options.outline.width,
+          align: options.outline.align ?? "center"
+        }
+      }
+    })
+  );
 }
 var NO_BREAK_SPACE = "\xA0";
 var NUMBER = String.raw`\d[\d.,]*`;
@@ -22702,6 +22739,11 @@ var GROWN_TEXT_PARAMETERS = {
     description: "The least height the block takes, in px, however few its lines."
   }
 };
+function imageHeight(asset, width, fallback) {
+  const size = asset?.size;
+  if (size === void 0 || !(size.w > 0) || !(size.h > 0)) return fallback;
+  return width * size.h / size.w;
+}
 function reportOverflow(report, bottom, limit) {
   const overflow = bottom - limit;
   if (overflow > 0) report({ code: "W_TEMPLATE_OVERFLOW", overflow });
@@ -22973,6 +23015,19 @@ var PICTURE_SHAPE_PARAMETERS = {
     description: "How the file fills the picture: `auto` covers it when the picture took the file\u2019s own shape and fits it whole otherwise."
   }
 };
+var BARE_PICTURE_PARAMETERS = PICTURE_SHAPE_PARAMETERS;
+function pictureSize(asset, width, cap, values) {
+  const natural = imageHeight(asset, width, width / values.fallback);
+  const capped = Math.min(natural, cap);
+  const clamped = Math.min(width / values.tallest, Math.max(width / values.widest, capped));
+  const fit = values.fit === "auto" ? clamped === natural ? "cover" : "contain" : values.fit;
+  return { size: { w: width, h: Math.round(clamped) }, fit };
+}
+function barePicture(asset, area, given = {}, options = {}) {
+  const values = parameterValues(BARE_PICTURE_PARAMETERS, given);
+  const { size, fit } = pictureSize(asset, area.width, area.height, values);
+  return sized(image({ name: options.name ?? "image", asset, size, fit }));
+}
 var FRAMED_PICTURE_PARAMETERS = {
   ...PICTURE_SHAPE_PARAMETERS,
   border: {
@@ -23110,6 +23165,76 @@ function drawButton(button, width) {
   return block(width, h, group({ name: button.name ?? "button", children }));
 }
 var NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
+function icon(shape2, height, color2, name) {
+  const drawn = iconIn(shape2, { width: Infinity, height }, color2, {}, { name });
+  return { width: drawn.width, height: drawn.height, draft: drawn.draft };
+}
+var ICON_PARAMETERS = {
+  height: {
+    kind: "length",
+    default: 24,
+    min: 0,
+    description: "The icon's height, in px; absent, the area's height when it has one."
+  }
+};
+function iconIn(shape2, area, color2, given = {}, options = {}) {
+  const values = parameterValues(ICON_PARAMETERS, given);
+  const height = given.height !== void 0 || !Number.isFinite(area.height) ? values.height : area.height;
+  const name = options.name ?? "icon";
+  const scale = height / shape2.box.h;
+  const paint = shape2.paint.kind === "fill" ? { fill: solid(color2) } : {
+    fill: NO_FILL,
+    stroke: {
+      paint: solid(color2),
+      width: shape2.paint.width,
+      align: "center"
+    }
+  };
+  const width = shape2.box.w * scale;
+  return {
+    ...block(
+      width,
+      height,
+      vector({
+        name,
+        geometry: { kind: "path", d: shape2.d, fillRule: shape2.fillRule ?? "nonzero" },
+        size: shape2.box,
+        ...paint,
+        transform: { scaleX: scale, scaleY: scale }
+      })
+    ),
+    overflow: Number.isFinite(area.width) ? Math.max(0, width - area.width) : 0
+  };
+}
+var ICON_IN_DISC_PARAMETERS = {
+  iconRatio: {
+    kind: "ratio",
+    default: 0.5,
+    min: 0,
+    max: 1,
+    description: "The icon's height as a share of the disc's diameter."
+  }
+};
+function iconInDisc(shape2, diameter, colors, given = {}, options = {}) {
+  const { iconRatio } = parameterValues(ICON_IN_DISC_PARAMETERS, given);
+  const glyph = icon(shape2, diameter * iconRatio, colors.icon, options.iconName ?? "icon");
+  return block(
+    diameter,
+    diameter,
+    group({
+      name: options.name ?? "icon-in-disc",
+      children: [
+        rect({
+          name: options.discName ?? "disc",
+          size: { w: diameter, h: diameter },
+          radius: diameter / 2,
+          fill: solid(colors.disc)
+        }),
+        at((diameter - glyph.width) / 2, (diameter - glyph.height) / 2, glyph)
+      ]
+    })
+  );
+}
 
 // node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-KTMH3XT2.js
 var PLACEHOLDER_LOGO = {
@@ -23124,19 +23249,19 @@ var PLACEHOLDER_SIGNATURE = "@assinatura";
 function oneInk(ink) {
   return { primary: ink, secondary: ink };
 }
-function drawBrandMark(shape, height, inks, name) {
-  if (!isTonedMark(shape)) return mark(shape, height, inks.primary, name);
-  const scale = height / shape.box.h;
+function drawBrandMark(shape2, height, inks, name) {
+  if (!isTonedMark(shape2)) return mark(shape2, height, inks.primary, name);
+  const scale = height / shape2.box.h;
   return block(
-    shape.box.w * scale,
+    shape2.box.w * scale,
     height,
     group({
       name,
-      children: shape.layers.map(
+      children: shape2.layers.map(
         (layer) => vector({
           name: `${name}-${layer.tone}`,
           geometry: { kind: "path", d: layer.d, fillRule: layer.fillRule },
-          size: shape.box,
+          size: shape2.box,
           fill: solid(inks[layer.tone]),
           transform: { scaleX: scale, scaleY: scale }
         })
@@ -23269,7 +23394,6 @@ var METRICS = {
   Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
   CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 }
 };
-var NO_FILL2 = solid({ r: 0, g: 0, b: 0, a: 0 });
 function capOffset(family, size, lineHeight) {
   const m = METRICS[family];
   return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
@@ -23284,6 +23408,49 @@ var CARD = {
   /** From the tabs' top to the sheet's top. */
   tabs: 69.6
 };
+var TAB_BOX = { w: SLIDE.w, h: CARD.tabs + 35 };
+var FRONT_TAB = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: TAB_BOX,
+    d: "M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z",
+    paint: { kind: "fill" }
+  }
+};
+var BACK_TAB = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: TAB_BOX,
+    d: "M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z",
+    paint: { kind: "fill" }
+  }
+};
+var ARROW_BOX = { w: SLIDE.w, h: CARD.tabs };
+var ARROW_ON = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: ARROW_BOX,
+    d: "M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z",
+    paint: { kind: "fill" }
+  }
+};
+var ARROW_DOWN = {
+  x: 0,
+  y: 0,
+  shape: {
+    box: ARROW_BOX,
+    d: "M690 20H718V40H727L712 57L697 40H706V28H690Z",
+    paint: { kind: "fill" }
+  }
+};
+var HEART = {
+  box: { w: 192, h: 192 },
+  d: "M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46C135 46 150 58 150 78C150 112 96 150 96 150Z",
+  paint: { kind: "fill" }
+};
 var INNER = {
   bandX: 109,
   bandW: 862,
@@ -23296,10 +23463,6 @@ var INNER = {
    */
   questionW: 762
 };
-var FRONT_TAB = "M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z";
-var BACK_TAB = "M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z";
-var ARROW_ON = "M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z";
-var ARROW_DOWN = "M690 20H718V40H727L712 57L697 40H706V28H690Z";
 var SIGNATURE2 = { x: 215, capTop: 22, size: 30 };
 var SHADOW = { y: 7, blur: 71, alpha: 0.2, grey: 49 };
 var TITLE3 = {
@@ -23371,10 +23534,25 @@ var build = (context) => {
     idPrefix: context.idPrefix,
     background: solid("#e2e1e1"),
     children: [
-      ...background === void 0 ? [] : [image({ name: "fundo", asset: background, size: context.size, fit: "cover" })],
+      ...background === void 0 ? [] : [
+        barePicture(
+          background,
+          { width: context.size.w, height: context.size.h },
+          // Held to the slide's own shape, so the picture is the slide's size whatever
+          // the file's.
+          {
+            fit: "cover",
+            widest: context.size.w / context.size.h,
+            tallest: context.size.w / context.size.h
+          },
+          { name: "fundo" }
+        ).draft
+      ],
       at(LOGO.x, LOGO.y, drawLogo(context.brand, LOGO.height, oneInk(ink("logo")))),
       card(context, ink, top, sheet),
       ...paper === void 0 ? [] : [
+        // The kit's `barePicture` takes no blend mode (TYTO-910); until it does, the paper
+        // is the one image this template draws with the core's node.
         image({
           name: "papel",
           asset: paper,
@@ -23387,12 +23565,7 @@ var build = (context) => {
   });
 };
 function card(context, ink, top, sheet) {
-  const tab = (name, d, color2) => vector({
-    name,
-    geometry: { kind: "path", d, fillRule: "nonzero" },
-    size: { w: SLIDE.w, h: CARD.tabs + 35 },
-    fill: solid(color2)
-  });
+  const drawn = (name, piece, color2) => at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color2, name));
   return group({
     name: "cartao",
     transform: { x: 0, y: top },
@@ -23407,14 +23580,9 @@ function card(context, ink, top, sheet) {
       }
     ],
     children: [
-      tab("aba-tras", BACK_TAB, ink("back-tab")),
-      vector({
-        name: "seta",
-        geometry: { kind: "path", d: sheet.arrow, fillRule: "nonzero" },
-        size: { w: SLIDE.w, h: CARD.tabs },
-        fill: solid(ink("ink"))
-      }),
-      tab("aba-frente", FRONT_TAB, ink("card")),
+      drawn("aba-tras", BACK_TAB, ink("back-tab")),
+      drawn("seta", sheet.arrow, ink("ink")),
+      drawn("aba-frente", FRONT_TAB, ink("card")),
       plainText("assinatura", signatureOf(context.brand), {
         family: "Roboto",
         font: SANS,
@@ -23424,13 +23592,16 @@ function card(context, ink, top, sheet) {
         weight: LIGHT,
         color: ink("ink")
       }),
-      rect({
-        name: "folha",
-        size: { w: CARD.w, h: sheet.height },
-        radius: CARD.radius,
-        fill: solid(ink("card")),
-        transform: { x: CARD.x, y: CARD.tabs }
-      }),
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink("card")),
+          { kind: "rounded", radius: CARD.radius },
+          { name: "folha" }
+        )
+      ),
       group({ name: "conteudo", transform: { y: CARD.tabs }, children: sheet.children })
     ]
   });
@@ -23514,13 +23685,16 @@ function withoutNumber(written) {
 function band(ink, name, y, height, edge) {
   const radius = 6;
   return [
-    rect({
-      name,
-      size: { w: INNER.bandW, h: height },
-      radius,
-      fill: solid(ink("accent-edge")),
-      transform: { x: INNER.bandX, y }
-    }),
+    at(
+      INNER.bandX,
+      y,
+      shape(
+        { w: INNER.bandW, h: height },
+        solid(ink("accent-edge")),
+        { kind: "rounded", radius },
+        { name }
+      )
+    ),
     rect({
       name: `${name}-corpo`,
       size: edge === "side" ? { w: INNER.bandW - INNER.edge, h: height } : { w: INNER.bandW, h: height - RULING.answerEdge },
@@ -23808,46 +23982,32 @@ function backCover(context, ink) {
 }
 function heart(ink, y) {
   const { x, d } = BACK.heart;
-  const shape = "M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46C135 46 150 58 150 78C150 112 96 150 96 150Z";
   return [
-    rect({
-      name: "coracao-fundo",
-      size: { w: d, h: d },
-      radius: d / 2,
-      fill: solid(ink("accent")),
-      transform: { x, y }
-    }),
-    vector({
-      name: "coracao",
-      geometry: { kind: "path", d: shape, fillRule: "nonzero" },
-      size: { w: d, h: d },
-      fill: solid(ink("card")),
-      transform: { x, y }
-    })
+    at(
+      x,
+      y,
+      iconInDisc(
+        HEART,
+        d,
+        { disc: ink("accent"), icon: ink("card") },
+        { iconRatio: 1 },
+        { name: "coracao-disco", discName: "coracao-fundo", iconName: "coracao" }
+      )
+    )
   ];
 }
 function icons(ink, y) {
   const { x } = BACK.icons;
-  const stroke = { paint: solid(ink("ink")), width: 4, align: "center" };
+  const outlined = { kind: "stroke", width: 4 };
   const ROW = 48;
   const GAP = 18;
   const glyph = (name, d, size, width, down) => {
     const box = typeof size === "number" ? { w: size, h: size } : size;
+    const outline = { box, d, paint: outlined };
     return {
       name: `${name}-botao`,
       style: { height: ROW, radius: 0, padding: { left: 0, right: 0 }, gap: 0 },
-      leading: block(
-        width,
-        ROW,
-        vector({
-          name,
-          geometry: { kind: "path", d, fillRule: "nonzero" },
-          size: box,
-          stroke,
-          fill: NO_FILL2,
-          transform: { x: 0, y: down }
-        })
-      )
+      leading: block(width, ROW, at(0, down, icon(outline, box.h, ink("ink"), name)))
     };
   };
   const row = buttonRow(
