@@ -22919,11 +22919,6 @@ var GROWN_TEXT_PARAMETERS = {
     description: "The least height the block takes, in px, however few its lines."
   }
 };
-function capitals(value) {
-  return value.map(
-    (inline) => inline.kind === "text" ? { ...inline, value: inline.value.toLocaleUpperCase("pt-BR") } : inline
-  );
-}
 function imageHeight(asset, width, fallback) {
   const size = asset?.size;
   if (size === void 0 || !(size.w > 0) || !(size.h > 0)) return fallback;
@@ -24041,18 +24036,19 @@ function titleSections(context, ink, written, align, highlighted) {
   const main = rest.length > 0 ? rest : [...written];
   const sections = [];
   if (kicker.length > 0) {
-    const runs2 = runsOfLines(
-      kicker.map(capitals),
-      runStyle(TITLE3.kickerSize),
-      highlighted?.title.options
+    const runs2 = runsOfLines(kicker, runStyle(TITLE3.kickerSize), highlighted?.title.options).map(
+      inCapitals
     );
     sections.push(textSection(context, "chapeu", runs2, kicker, textStyle(TITLE3.kickerSize), 0));
   }
-  const runs = runsOfLines(main.map(capitals), runStyle(TITLE3.size), highlighted?.title.options);
+  const runs = runsOfLines(main, runStyle(TITLE3.size), highlighted?.title.options).map(inCapitals);
   sections.push(
     textSection(context, "titulo", runs, main, textStyle(TITLE3.size), TITLE3.kickerToTitle)
   );
   return sections;
+}
+function inCapitals(item) {
+  return item.kind === "text" ? { ...item, text: item.text.toLocaleUpperCase("pt-BR") } : item;
 }
 function titleLines(context) {
   return fieldOf(context, "titulo") ?? DEFAULT_TITLE.map(richLine);

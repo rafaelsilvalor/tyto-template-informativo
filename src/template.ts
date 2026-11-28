@@ -61,7 +61,6 @@ import {
   block,
   buttonRow,
   capText,
-  capitals,
   fittedColumn,
   highlights,
   icon,
@@ -677,18 +676,24 @@ function titleSections(
   const sections: Section[] = [];
   if (kicker.length > 0) {
     // In capitals, as the reference sets its title.
-    const runs = runsOfLines(
-      kicker.map(capitals),
-      runStyle(TITLE.kickerSize),
-      highlighted?.title.options,
+    const runs = runsOfLines(kicker, runStyle(TITLE.kickerSize), highlighted?.title.options).map(
+      inCapitals,
     );
     sections.push(textSection(context, 'chapeu', runs, kicker, textStyle(TITLE.kickerSize), 0));
   }
-  const runs = runsOfLines(main.map(capitals), runStyle(TITLE.size), highlighted?.title.options);
+  const runs = runsOfLines(main, runStyle(TITLE.size), highlighted?.title.options).map(inCapitals);
   sections.push(
     textSection(context, 'titulo', runs, main, textStyle(TITLE.size), TITLE.kickerToTitle),
   );
   return sections;
+}
+
+/**
+ * A run in capitals, as the reference sets its title. Per run, after the highlights: the kit's
+ * `capitals` maps only a line's own words, so a `**…**` or `{cor:…}` word would stay as written.
+ */
+function inCapitals(item: TextRun): TextRun {
+  return item.kind === 'text' ? { ...item, text: item.text.toLocaleUpperCase('pt-BR') } : item;
 }
 
 /** The brief's `::titulo` lines, or the reference's two when the brief writes none. */

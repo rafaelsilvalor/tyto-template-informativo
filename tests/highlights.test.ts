@@ -138,11 +138,13 @@ describe('where the highlights go', () => {
   });
 
   it("in the title: the colour, at the title's own weight", async () => {
-    const body = `::titulo\n  Destaques do\n  Informativo **TRZ** {cor:destaque}412{/}\n${QUESTION}`;
+    const body = `::titulo\n  Destaques **do**\n  Informativo **TRZ** {cor:destaque}412{/}\n${QUESTION}`;
     const [found] = await slides(body, SET);
 
     expect(lookOf(found!, 'titulo', 'TRZ')).toMatchObject({ weight: 800, color: '#123456' });
     expect(lookOf(found!, 'titulo', '412')).toMatchObject({ weight: 800, color: '#123456' });
+    // The kicker too, at its own weight.
+    expect(lookOf(found!, 'chapeu', 'DO')).toMatchObject({ weight: 800, color: '#123456' });
     expect(lookOf(found!, 'titulo', 'INFORMATIVO ').color).not.toBe('#123456');
   });
 
