@@ -5098,7 +5098,7 @@ function isRecursive(inst, stack, resolve) {
     }
     return answer;
   };
-  const merge2 = (answer) => {
+  const merge3 = (answer) => {
     if (answer > result)
       result = answer;
   };
@@ -5107,7 +5107,7 @@ function isRecursive(inst, stack, resolve) {
   switch (kind) {
     case "object": {
       const raw = rawShape(def);
-      merge2(raw ? shape2(raw, true) : ASSUMED);
+      merge3(raw ? shape2(raw, true) : ASSUMED);
       check2(def.catchall);
       break;
     }
@@ -5157,7 +5157,7 @@ function isRecursive(inst, stack, resolve) {
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
       const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
-      merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
+      merge3(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
     // a leaf by choice: `parts` are regex fragments, not data positions
@@ -22648,6 +22648,52 @@ function plainRuns(words, style2) {
   const [first = "", ...others] = words.split("\n");
   return [run(first, style2), ...others.flatMap((line) => [lineBreak(), run(line, style2)])];
 }
+var HIGHLIGHT_WEIGHT = 700;
+function mergeFamilies(base2, over) {
+  if (over === void 0) return base2;
+  const merged = { ...base2 };
+  for (const [key, family] of Object.entries(over)) {
+    const previous = merged[key];
+    const like = family.like ?? previous?.like;
+    merged[key] = {
+      ...like === void 0 ? {} : { like },
+      values: { ...previous?.values, ...family.values }
+    };
+  }
+  return merged;
+}
+function merge2(base2, over) {
+  const marks = mergeFamilies(base2.marks, over.marks);
+  return {
+    bold: { ...base2.bold, ...over.bold },
+    italic: { ...base2.italic, ...over.italic },
+    ...marks === void 0 ? {} : { marks }
+  };
+}
+function markStyle(spec, key, value) {
+  const family = spec.marks?.[key];
+  const named = family?.values[value];
+  if (family === void 0 || named === void 0) return void 0;
+  switch (family.like) {
+    case "bold":
+      return { weight: HIGHLIGHT_WEIGHT, ...spec.bold, ...named };
+    case "italic":
+      return { ...spec.italic, ...named, style: "italic" };
+    default:
+      return named;
+  }
+}
+function highlights(spec) {
+  return {
+    spec,
+    options: {
+      bold: { weight: HIGHLIGHT_WEIGHT, ...spec.bold },
+      italic: spec.italic ?? {},
+      mark: (key, value) => markStyle(spec, key, value)
+    },
+    with: (override) => highlights(merge2(spec, override))
+  };
+}
 function lines(text5) {
   const result = [];
   let current = [];
@@ -23250,6 +23296,25 @@ function fittedColumn(stackAt, room, given = {}, options = {}) {
   const arranged = arrange(tuning);
   return drawn(tuning, arranged.stacked, arranged.spaced.tops);
 }
+function roleOf(context, spec) {
+  const marked = (adjustments) => spec.roles.filter((role) => adjustments[role] === true);
+  const own2 = marked(context.adjustments);
+  const [first] = own2;
+  if (first !== void 0) return { role: first, ...own2.length > 1 ? { conflict: own2 } : {} };
+  const continuation = spec.continuation;
+  if (continuation === void 0 || context.adjustments[continuation.flag] !== true) {
+    return { role: spec.default };
+  }
+  const before = context.artworks?.slice(0, context.artwork.index).reverse() ?? [];
+  for (const { adjustments } of before) {
+    const [role] = marked(adjustments);
+    if (role !== void 0) {
+      return { role: continuation.carries.includes(role) ? role : spec.default };
+    }
+    if (adjustments[continuation.flag] !== true) return { role: spec.default };
+  }
+  return { role: spec.default };
+}
 var PICTURE_SHAPE_PARAMETERS = {
   widest: {
     kind: "ratio",
@@ -23642,7 +23707,11 @@ var COLOR_DEFAULTS = {
   ink: "#4d4d4d",
   /** The words on a band. */
   "on-accent": "#ebeae9",
-  /** A `**highlight**` in the question. */
+  /**
+   * The highlight: `**…**` and a `{cor:destaque}…{/}` span in the question and the title.
+   */
+  destaque: "#ae7d2e",
+  /** The highlight's old name, kept so a configuration that writes it draws as it did. */
   "highlight-color": "#ae7d2e",
   /** The logo, over the background. */
   logo: "#ebeae9"
@@ -23797,16 +23866,17 @@ var BACK = {
   bottom: 80
 };
 var SIZE_DRIFT_WEIGHT = 0.1;
-function roleOf(context) {
-  return context.adjustments["contracapa"] === true ? "contracapa" : "ruling";
-}
+var ROLES = {
+  roles: ["contracapa"],
+  default: "ruling"
+};
 var build = (context) => {
   const ink = (name) => colorValue(context, name, COLOR_DEFAULTS[name]);
   const number4 = (name) => numberValue(context, name, NUMBER_DEFAULTS[name]);
   const written = context.slots["fundo"]?.value;
   const background = written?.kind === "image" ? written.asset : imageValue(context, "background");
   const paper = imageValue(context, "paper-texture");
-  const sheet = roleOf(context) === "contracapa" ? backCover(context, ink) : ruling(context, ink, number4);
+  const sheet = roleOf(context, ROLES).role === "contracapa" ? backCover(context, ink) : ruling(context, ink, number4);
   const height = CARD.tabs + sheet.height;
   const top = Math.round((SLIDE.h - height) / 2);
   const limit = number4("card-max-height");
@@ -23947,7 +24017,7 @@ function runsOfLines(written, style2, options) {
     ...runsOf(line, style2, options)
   ]);
 }
-function titleSections(context, ink, written, align) {
+function titleSections(context, ink, written, align, highlighted) {
   if (written.length === 0) return [];
   const x = align === "left" ? INNER.textX : CARD.x;
   const width = align === "left" ? INNER.textW : CARD.w;
@@ -23971,10 +24041,14 @@ function titleSections(context, ink, written, align) {
   const main = rest.length > 0 ? rest : [...written];
   const sections = [];
   if (kicker.length > 0) {
-    const runs2 = runsOfLines(kicker.map(capitals), runStyle(TITLE3.kickerSize));
+    const runs2 = runsOfLines(
+      kicker.map(capitals),
+      runStyle(TITLE3.kickerSize),
+      highlighted?.title.options
+    );
     sections.push(textSection(context, "chapeu", runs2, kicker, textStyle(TITLE3.kickerSize), 0));
   }
-  const runs = runsOfLines(main.map(capitals), runStyle(TITLE3.size));
+  const runs = runsOfLines(main.map(capitals), runStyle(TITLE3.size), highlighted?.title.options);
   sections.push(
     textSection(context, "titulo", runs, main, textStyle(TITLE3.size), TITLE3.kickerToTitle)
   );
@@ -24128,7 +24202,10 @@ function layRuling(context, ink, parts, sizes, tunings) {
   const questionSize = sizes.question;
   const answerSize = sizes.answer;
   const texts = /* @__PURE__ */ new Map();
-  const sections = [...titleSections(context, ink, titleLines(context), "left")];
+  const highlighted = highlightsOf(ink);
+  const sections = [
+    ...titleSections(context, ink, titleLines(context), "left", highlighted)
+  ];
   if (present(parts.subject)) {
     const runs = runsOfLines(parts.subject, {
       font: SANS,
@@ -24156,8 +24233,8 @@ function layRuling(context, ink, parts, sizes, tunings) {
     const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink("ink") },
-      { bold: MEDIUM }
-    ).map((item) => italic(item, ink("highlight-color")));
+      highlighted.question.options
+    ).map(italic);
     const section = textSection(
       context,
       "pergunta",
@@ -24180,7 +24257,7 @@ function layRuling(context, ink, parts, sizes, tunings) {
     const runs = runsOfLines(
       parts.answer,
       { font: SANS, size: answerSize, weight: LIGHT, color: ink("on-accent") },
-      { bold: MEDIUM }
+      highlighted.answer.options
     );
     const inner = textSection(
       context,
@@ -24230,10 +24307,30 @@ function layRuling(context, ink, parts, sizes, tunings) {
   const { node: node2, bottom } = stacked(sections, RULING.top);
   return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node2], texts };
 }
-function italic(item, highlight) {
-  if (item.kind !== "text") return item;
-  const bold = item.weight > REGULAR;
-  return { ...item, style: "italic", ...bold ? { color: solid(highlight) } : {} };
+function italic(item) {
+  return item.kind === "text" ? { ...item, style: "italic" } : item;
+}
+var COLOR_MARK = "cor";
+function highlightColor(ink) {
+  const named = ink("destaque");
+  if (named !== COLOR_DEFAULTS.destaque) return named;
+  const old = ink("highlight-color");
+  return old !== COLOR_DEFAULTS["highlight-color"] ? old : named;
+}
+function highlightsOf(ink) {
+  const color2 = highlightColor(ink);
+  const painted = { destaque: { color: color2 } };
+  return {
+    question: highlights({
+      bold: { weight: MEDIUM, color: color2 },
+      marks: { [COLOR_MARK]: { like: "bold", values: painted } }
+    }),
+    title: highlights({
+      bold: { weight: EXTRABOLD, color: color2 },
+      marks: { [COLOR_MARK]: { like: "plain", values: painted } }
+    }),
+    answer: highlights({ bold: { weight: MEDIUM } })
+  };
 }
 function backCover(context, ink) {
   const call = fieldOf(context, "chamada") ?? [richLine(DEFAULT_CALL)];

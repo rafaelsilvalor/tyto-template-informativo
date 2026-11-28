@@ -1,13 +1,13 @@
 import { noBrandKit } from '@tyto/core';
-import { NO_BREAK_SPACE } from '@tyto/template-kit';
+import { NO_BREAK_SPACE, roleOf } from '@tyto/template-kit';
 import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_CALL,
   DEFAULT_CLOSING,
   NUMBER_DEFAULTS,
+  ROLES,
   build,
-  roleOf,
   rulingOf,
 } from './template.js';
 
@@ -331,8 +331,8 @@ describe('the background and the paper', () => {
 
 describe('the back cover', () => {
   it('is chosen by the brief’s {contracapa}', () => {
-    expect(roleOf(contextOf({}, { contracapa: true }))).toBe('contracapa');
-    expect(roleOf(contextOf(ruling))).toBe('ruling');
+    expect(roleOf(contextOf({}, { contracapa: true }), ROLES).role).toBe('contracapa');
+    expect(roleOf(contextOf(ruling), ROLES).role).toBe('ruling');
   });
 
   it('says the reference’s words when nothing is written, and drops the title’s number', () => {

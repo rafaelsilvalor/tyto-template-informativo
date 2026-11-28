@@ -63,12 +63,14 @@ import {
   capText,
   capitals,
   fittedColumn,
+  highlights,
   icon,
   iconInDisc,
   keepTogether,
   lines,
   plain,
   reportOverflow,
+  roleOf,
   shape,
   signatureLine,
   stackIn,
@@ -81,6 +83,7 @@ import type {
   FontMetrics,
   Icon,
   KeepTogetherRule,
+  RoleSpec,
 } from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
@@ -127,7 +130,11 @@ export const COLOR_DEFAULTS = {
   ink: '#4d4d4d',
   /** The words on a band. */
   'on-accent': '#ebeae9',
-  /** A `**highlight**` in the question. */
+  /**
+   * The highlight: `**…**` and a `{cor:destaque}…{/}` span in the question and the title.
+   */
+  destaque: '#ae7d2e',
+  /** The highlight's old name, kept so a configuration that writes it draws as it did. */
   'highlight-color': '#ae7d2e',
   /** The logo, over the background. */
   logo: '#ebeae9',
@@ -371,12 +378,11 @@ const SIZE_DRIFT_WEIGHT = 0.1;
 
 /* --------------------------------------------------------------------------- the build -- */
 
-export type Role = 'ruling' | 'contracapa';
-
-/** Which slide this `::lamina` is: the brief marks the back cover. */
-export function roleOf(context: TemplateContext): Role {
-  return context.adjustments['contracapa'] === true ? 'contracapa' : 'ruling';
-}
+/** Which slide a `::lamina` is: the brief marks the back cover; any other slide is a ruling. */
+export const ROLES = {
+  roles: ['contracapa'],
+  default: 'ruling',
+} as const satisfies RoleSpec<'contracapa', 'ruling'>;
 
 export const build: TemplateBuild = (context: TemplateContext) => {
   const ink = (name: ColorName): string => colorValue(context, name, COLOR_DEFAULTS[name]);
@@ -389,7 +395,9 @@ export const build: TemplateBuild = (context: TemplateContext) => {
   const paper = imageValue(context, 'paper-texture');
 
   const sheet =
-    roleOf(context) === 'contracapa' ? backCover(context, ink) : ruling(context, ink, number);
+    roleOf(context, ROLES).role === 'contracapa'
+      ? backCover(context, ink)
+      : ruling(context, ink, number);
   const height = CARD.tabs + sheet.height;
   const top = Math.round((SLIDE.h - height) / 2);
   const limit = number('card-max-height');
@@ -643,6 +651,7 @@ function titleSections(
   ink: Ink,
   written: readonly RichText[],
   align: 'left' | 'center',
+  highlighted?: Highlighted,
 ): Section[] {
   if (written.length === 0) return [];
   const x = align === 'left' ? INNER.textX : CARD.x;
@@ -668,10 +677,14 @@ function titleSections(
   const sections: Section[] = [];
   if (kicker.length > 0) {
     // In capitals, as the reference sets its title.
-    const runs = runsOfLines(kicker.map(capitals), runStyle(TITLE.kickerSize));
+    const runs = runsOfLines(
+      kicker.map(capitals),
+      runStyle(TITLE.kickerSize),
+      highlighted?.title.options,
+    );
     sections.push(textSection(context, 'chapeu', runs, kicker, textStyle(TITLE.kickerSize), 0));
   }
-  const runs = runsOfLines(main.map(capitals), runStyle(TITLE.size));
+  const runs = runsOfLines(main.map(capitals), runStyle(TITLE.size), highlighted?.title.options);
   sections.push(
     textSection(context, 'titulo', runs, main, textStyle(TITLE.size), TITLE.kickerToTitle),
   );
@@ -886,7 +899,10 @@ function layRuling(
   const questionSize = sizes.question;
   const answerSize = sizes.answer;
   const texts = new Map<string, TextDraft>();
-  const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
+  const highlighted = highlightsOf(ink);
+  const sections: Section[] = [
+    ...titleSections(context, ink, titleLines(context), 'left', highlighted),
+  ];
 
   if (present(parts.subject)) {
     const runs = runsOfLines(parts.subject, {
@@ -916,8 +932,8 @@ function layRuling(
     const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink('ink') },
-      { bold: MEDIUM },
-    ).map((item) => italic(item, ink('highlight-color')));
+      highlighted.question.options,
+    ).map(italic);
     const section = textSection(
       context,
       'pergunta',
@@ -941,7 +957,7 @@ function layRuling(
     const runs = runsOfLines(
       parts.answer,
       { font: SANS, size: answerSize, weight: LIGHT, color: ink('on-accent') },
-      { bold: MEDIUM },
+      highlighted.answer.options,
     );
     const inner = textSection(
       context,
@@ -994,12 +1010,51 @@ function layRuling(
   return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node], texts };
 }
 
-/** The question is italic throughout; its highlights take the highlight colour. */
-function italic(item: TextRun, highlight: string): TextRun {
-  if (item.kind !== 'text') return item;
-  const bold = item.weight > REGULAR;
-  return { ...item, style: 'italic', ...(bold ? { color: solid(highlight) } : {}) };
+/** The question is italic throughout, its highlights too. */
+function italic(item: TextRun): TextRun {
+  return item.kind === 'text' ? { ...item, style: 'italic' } : item;
 }
+
+/** The mark family a brief paints a span with: `{cor:destaque}…{/}`. */
+const COLOR_MARK = 'cor';
+
+/**
+ * The highlight's colour: `destaque` when a configuration sets it; otherwise the old
+ * `highlight-color` when one sets that; otherwise the default. Both declare the same default, so
+ * a value written equal to it draws the same either way.
+ */
+function highlightColor(ink: Ink): string {
+  const named = ink('destaque');
+  if (named !== COLOR_DEFAULTS.destaque) return named;
+  const old = ink('highlight-color');
+  return old !== COLOR_DEFAULTS['highlight-color'] ? old : named;
+}
+
+/**
+ * The brief's highlights, by the kit (TYTO-554), as data. In the question `**…**` is Medium in the
+ * highlight's colour, and so is a `{cor:destaque}` span; in the title both take the colour and keep
+ * the title's weight. On the answer's band `**…**` stays Medium in the band's words and a
+ * `{cor:…}` span passes through uncoloured: the band is the highlight's colour, so the span would
+ * vanish (as on concursos-abertos's back-cover box, TYTO-893), and making it Medium would change
+ * what a colour mark means. The back cover, the subject and the source take no highlight.
+ */
+function highlightsOf(ink: Ink) {
+  const color = highlightColor(ink);
+  const painted = { destaque: { color } };
+  return {
+    question: highlights({
+      bold: { weight: MEDIUM, color },
+      marks: { [COLOR_MARK]: { like: 'bold', values: painted } },
+    }),
+    title: highlights({
+      bold: { weight: EXTRABOLD, color },
+      marks: { [COLOR_MARK]: { like: 'plain', values: painted } },
+    }),
+    answer: highlights({ bold: { weight: MEDIUM } }),
+  };
+}
+
+type Highlighted = ReturnType<typeof highlightsOf>;
 
 /* ---------------------------------------------------------------------- the back cover -- */
 
