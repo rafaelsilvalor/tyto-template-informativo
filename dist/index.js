@@ -24087,6 +24087,9 @@ function band(ink, name, height, edge) {
         { name }
       )
     ),
+    // The body rounds two corners only, which the kit's `shape` does not draw, and its `icon`
+    // from a path set the edges differently (measured, TYTO-894); until the kit draws it
+    // (TYTO-909), this is the one core node the template draws.
     rect({
       name: `${name}-corpo`,
       size: edge === "side" ? { w: INNER.bandW - INNER.edge, h: height } : { w: INNER.bandW, h: height - RULING.answerEdge },
