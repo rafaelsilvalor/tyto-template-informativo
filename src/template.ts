@@ -214,13 +214,9 @@ const CARD = {
 } as const;
 
 /**
- * A shape of the reference's, held as data: its outline in a box, and where that box stands on
- * the card, in the slide's x and in y from the tabs' top.
- *
- * The tabs and the arrows are still outlined in the slide's x, in a box as wide as the slide:
- * the card's shadow is cast from a layer as large as the boxes it holds, and Chrome sets every
- * edge in that layer a fraction of a pixel differently when the boxes change (measured,
- * TYTO-894). Giving each its own box is a change to the art, made apart.
+ * A shape of the reference's, held as data: its outline in a box of its own, and where that box
+ * stands on the card, in the slide's x and in y from the tabs' top. The box starts on a whole
+ * pixel, so the outline is drawn where the reference draws it.
  */
 interface Piece {
   readonly x: number;
@@ -229,26 +225,25 @@ interface Piece {
 }
 
 /** The tabs (the reference's shapes); each runs 34.7 px under the sheet, so no seam shows. */
-const TAB_BOX = { w: SLIDE.w, h: CARD.tabs + 35 } as const;
 const FRONT_TAB: Piece = {
-  x: 0,
+  x: 119,
   y: 0,
   shape: {
-    box: TAB_BOX,
+    box: { w: 542.1, h: 104.3 },
     d:
-      'M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0' +
-      'H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z',
+      'M542.1 69.6V104.3H0V69.6H34.4C47.6 69.6 58.4 58.9 58.4 45.6V24C58.4 10.8 69.1 0 82.4 0' +
+      'H459.7C472.9 0 483.7 10.8 483.7 24V45.6C483.7 58.9 494.4 69.6 507.6 69.6Z',
     paint: { kind: 'fill' },
   },
 };
 const BACK_TAB: Piece = {
-  x: 0,
+  x: 553,
   y: 0,
   shape: {
-    box: TAB_BOX,
+    box: { w: 318, h: 104.3 },
     d:
-      'M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0' +
-      'H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z',
+      'M318 69.6V104.3H0.9V69.6H35.3C48.6 69.6 59.3 58.9 59.3 45.6V24C59.3 10.8 70 0 83.3 0' +
+      'H235.6C248.8 0 259.6 10.8 259.6 24V45.6C259.6 58.9 270.3 69.6 283.5 69.6Z',
     paint: { kind: 'fill' },
   },
 };
@@ -258,23 +253,22 @@ const BACK_TAB: Piece = {
  * the kit's `arrowShape`: its head is centred 0.05 px under its shaft (37.95 against 37.9), and
  * a symmetric arrow would move it.
  */
-const ARROW_BOX = { w: SLIDE.w, h: CARD.tabs } as const;
 const ARROW_ON: Piece = {
-  x: 0,
-  y: 0,
+  x: 644,
+  y: 25,
   shape: {
-    box: ARROW_BOX,
-    d: 'M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z',
+    box: { w: 137, h: 26 },
+    d: 'M136.2 12.9L120.5 0.1V9.2H0V16.6H120.5V25.8Z',
     paint: { kind: 'fill' },
   },
 };
 /** The back cover's arrow: down, to the comments. */
 const ARROW_DOWN: Piece = {
-  x: 0,
-  y: 0,
+  x: 690,
+  y: 20,
   shape: {
-    box: ARROW_BOX,
-    d: 'M690 20H718V40H727L712 57L697 40H706V28H690Z',
+    box: { w: 37, h: 37 },
+    d: 'M0 0H28V20H37L22 37L7 20H16V8H0Z',
     paint: { kind: 'fill' },
   },
 };
