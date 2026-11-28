@@ -50,16 +50,18 @@ import {
   run,
   runsOf,
   solid,
-  text,
 } from '@tyto/core/template';
 import { drawLogo, oneInk, signatureOf } from '@tyto/house-style';
 import {
   KEEP_TOGETHER_RULES,
   ORPHAN_LIMITS,
+  anchorOf,
   at,
   barePicture,
   block,
   buttonRow,
+  capText,
+  capitals,
   icon,
   iconInDisc,
   keepTogether,
@@ -69,9 +71,10 @@ import {
   reportOverflow,
   settle,
   shape,
+  signatureLine,
 } from '@tyto/template-kit';
 
-import type { Icon, KeepTogetherRule } from '@tyto/template-kit';
+import type { FontMetrics, Icon, KeepTogetherRule } from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -171,24 +174,18 @@ const EXTRABOLD = 800;
  */
 const TITLE_TRACKING = -0.027;
 
+type Family = 'Newsreader' | 'Roboto' | 'CircularXX';
+
 /**
- * Where the capitals start under a line's top, per family, as the fraction of the size the
- * browser puts above them: half the leading's excess over ascent plus descent, then ascent less
- * the cap height, in the metrics the browser uses: OS/2 typo where the font sets USE_TYPO_METRICS
- * (CircularXX, Newsreader), hhea where it does not (Roboto), read from the files themselves.
+ * Each family's metrics, as the kit's `capText` places a text by its capitals: in the metrics the
+ * browser uses, OS/2 typo where the font sets USE_TYPO_METRICS (CircularXX, Newsreader), hhea
+ * where it does not (Roboto), read from the files themselves.
  */
-const METRICS = {
-  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
-  Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
-  CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 },
-} as const;
-
-type Family = keyof typeof METRICS;
-
-function capOffset(family: Family, size: number, lineHeight: number): number {
-  const m = METRICS[family];
-  return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
-}
+const METRICS: Readonly<Record<Family, FontMetrics>> = {
+  Newsreader: { ascent: 0.735, descent: 0.265, capHeight: 0.67 },
+  Roboto: { ascent: 0.928, descent: 0.244, capHeight: 0.711 },
+  CircularXX: { ascent: 0.75, descent: 0.25, capHeight: 0.709 },
+};
 
 /** A glyph's advance, in em, for when nothing can be measured (a test, CI without the face). */
 const ESTIMATED_ADVANCE = 0.5;
@@ -484,15 +481,7 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
       drawn('aba-tras', BACK_TAB, ink('back-tab')),
       drawn('seta', sheet.arrow, ink('ink')),
       drawn('aba-frente', FRONT_TAB, ink('card')),
-      plainText('assinatura', signatureOf(context.brand), {
-        family: 'Roboto',
-        font: SANS,
-        x: SIGNATURE.x,
-        capTop: SIGNATURE.capTop,
-        size: SIGNATURE.size,
-        weight: LIGHT,
-        color: ink('ink'),
-      }),
+      signature(context, ink),
       at(
         CARD.x,
         CARD.tabs,
@@ -506,6 +495,18 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
       group({ name: 'conteudo', transform: { y: CARD.tabs }, children: sheet.children }),
     ],
   });
+}
+
+/** The brand kit's signature on the front tab, its capitals at `SIGNATURE.capTop`. */
+function signature(context: TemplateContext, ink: Ink): NodeDraft {
+  const line = signatureLine(
+    signatureOf(context.brand),
+    { width: Infinity, height: Infinity },
+    { font: SANS, weight: LIGHT, color: ink('ink') },
+    { size: SIGNATURE.size, lineHeight: 1.2, align: 'left' },
+    { name: 'assinatura', metrics: METRICS.Roboto },
+  );
+  return at(SIGNATURE.x, SIGNATURE.capTop - anchorOf(line).capTop, line);
 }
 
 /* --------------------------------------------------------------------------- the stack -- */
@@ -559,14 +560,34 @@ function textSection(
   gap: number,
   tuning?: Tuning,
 ): Section {
-  const drawnRuns = tuning?.runs ?? runs;
-  const spacing = tuning === undefined ? {} : { spacing: tuning.letterSpacing };
-  const place = (capTop: number): TextDraft =>
-    richText(name, drawnRuns, { ...style, ...spacing, capTop });
-  const count = measuredLines(context, place(0), written, style.size, style.width);
-  const height =
-    (count - 1) * style.size * style.lineHeight + style.size * METRICS[style.family].cap;
-  return { gap, height, draw: (top) => [place(top)], text: place(0) };
+  const set = capText(
+    nonEmpty(tuning?.runs ?? runs, style.size),
+    { width: style.width, height: Infinity },
+    {
+      size: style.size,
+      lineHeight: style.lineHeight,
+      letterSpacing: tuning?.letterSpacing ?? (style.tracking ?? 0) * style.size,
+      align: style.align ?? 'left',
+    },
+    {
+      name,
+      metrics: METRICS[style.family],
+      measure: measuredOr(context, written, style.size, style.width),
+    },
+  );
+  const { capTop, baseline } = anchorOf(set);
+  return {
+    gap,
+    height: baseline - capTop,
+    draw: (top) => [at(style.x, top - capTop, set)],
+    ...(set.draft.kind === 'text' ? { text: set.draft } : {}),
+  };
+}
+
+/** The runs, or one empty run when there are none, as a text node takes them. */
+function nonEmpty(runs: readonly TextRun[], size: number): [TextRun, ...TextRun[]] {
+  const [head, ...tail] = runs;
+  return [head ?? run('', { font: SANS, size, weight: REGULAR, color: '#000000' }), ...tail];
 }
 
 /** A text inside a band: the band's padding around the text section's own height. */
@@ -596,11 +617,6 @@ function runsOfLines(
     ...(index === 0 ? [] : [lineBreak()]),
     ...runsOf(line, style, options),
   ]);
-}
-
-/** A run in capitals, as the reference sets its title. */
-function upper(item: TextRun): TextRun {
-  return item.kind === 'text' ? { ...item, text: item.text.toUpperCase() } : item;
 }
 
 /* --------------------------------------------------------------------------- the title -- */
@@ -638,10 +654,11 @@ function titleSections(
   const main = rest.length > 0 ? rest : [...written];
   const sections: Section[] = [];
   if (kicker.length > 0) {
-    const runs = runsOfLines(kicker, runStyle(TITLE.kickerSize)).map(upper);
+    // In capitals, as the reference sets its title.
+    const runs = runsOfLines(kicker.map(capitals), runStyle(TITLE.kickerSize));
     sections.push(textSection(context, 'chapeu', runs, kicker, textStyle(TITLE.kickerSize), 0));
   }
-  const runs = runsOfLines(main, runStyle(TITLE.size)).map(upper);
+  const runs = runsOfLines(main.map(capitals), runStyle(TITLE.size));
   sections.push(
     textSection(context, 'titulo', runs, main, textStyle(TITLE.size), TITLE.kickerToTitle),
   );
@@ -1137,74 +1154,31 @@ function richLine(words: string): RichText {
   return [{ kind: 'text', value: words, range: { start: 0, end: words.length } }];
 }
 
-interface Box {
-  readonly family: Family;
-  readonly x: number;
-  /** Where the capitals start, in the parent's pixels. */
-  readonly capTop: number;
-  readonly size: number;
-  readonly lineHeight?: number;
-  readonly width?: number;
-  readonly align?: 'left' | 'center';
-  /** Letter spacing in em. */
-  readonly tracking?: number;
-  /** Letter spacing in px, as `settle` hands it; wins over `tracking`. */
-  readonly spacing?: number;
-}
-
-interface Placed extends Box {
-  readonly font: typeof SERIF | typeof SANS;
-  readonly weight: number;
-  readonly color: string;
-}
-
-/** A plain text, one run per line, placed by the top of its capitals. */
-function plainText(name: string, words: string, placed: Placed): TextDraft {
-  const style = {
-    font: placed.font,
-    size: placed.size,
-    weight: placed.weight,
-    color: placed.color,
-  };
-  const [first = '', ...others] = words.split('\n');
-  return richText(
-    name,
-    [run(first, style), ...others.flatMap((line) => [lineBreak(), run(line, style)])],
-    placed,
-  );
-}
-
-function richText(name: string, runs: readonly TextRun[], placed: Box): TextDraft {
-  const lineHeight = placed.lineHeight ?? 1.2;
-  const [head, ...tail] = runs;
-  const empty = run('', { font: SANS, size: placed.size, weight: REGULAR, color: '#000000' });
-  return text({
-    name,
-    runs: [head ?? empty, ...tail],
-    ...(placed.width === undefined ? {} : { box: { w: placed.width } }),
-    align: placed.align ?? 'left',
-    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
-    lineHeight,
-    transform: {
-      x: placed.x,
-      y: placed.capTop - capOffset(placed.family, placed.size, lineHeight),
-    },
-  });
-}
-
 /**
- * How many lines a text wraps to: measured when the context can, estimated otherwise from the
- * characters a line of `width` holds, each line written counted apart.
+ * `context.measure`, with its lines never fewer than one; when nothing can measure (a test, CI
+ * without the face), the estimate's lines, so the estimate is only worked out without a face.
  */
-function measuredLines(
+function measuredOr(
   context: TemplateContext,
-  node: TextDraft,
   written: readonly RichText[],
   size: number,
   width: number,
-): number {
-  const measured = context.measure(node);
-  if (measured !== undefined) return Math.max(1, measured.lines);
+): TemplateContext['measure'] {
+  return (node) => {
+    const measured = context.measure(node);
+    if (measured !== undefined) return { ...measured, lines: Math.max(1, measured.lines) };
+    const lines = estimated(written, size, width);
+    return { runs: node.runs, lines, width, height: 0, scale: 1, overflow: 0 };
+  };
+}
+
+/**
+ * How many lines a text wraps to with nothing to measure it by: the characters a line of
+ * `width` holds, each line written counted apart. The kit's `capText` counts only the lines the
+ * runs break into themselves when nothing measures; until it takes an estimate (TYTO-905), this
+ * one stays here.
+ */
+function estimated(written: readonly RichText[], size: number, width: number): number {
   const perLine = Math.max(1, Math.floor(width / (size * ESTIMATED_ADVANCE)));
   const count = written.reduce<number>(
     (sum, line) => sum + Math.max(1, Math.ceil([...plain(line)].length / perLine)),

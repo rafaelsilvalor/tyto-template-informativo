@@ -22486,6 +22486,9 @@ function valueWithin(declared, value) {
   if (typeof value !== "number" || Number.isNaN(value)) return declared.default;
   return Math.min(declared.max ?? Infinity, Math.max(declared.min ?? -Infinity, value));
 }
+function anchorOf(item) {
+  return item.anchor ?? { capTop: 0, baseline: item.height };
+}
 function shifted(draft, dx, dy) {
   const transform2 = {
     ...draft.transform,
@@ -22513,6 +22516,59 @@ function sized(draft) {
 }
 function at(x, y, item) {
   return shifted(item.draft, x, y);
+}
+var DEFAULT_METRICS = { ascent: 0.75, descent: 0.25, capHeight: 0.709 };
+function capOffset(size, lineHeight, metrics = DEFAULT_METRICS) {
+  const excess = (lineHeight - (metrics.ascent + metrics.descent)) / 2;
+  return size * (excess + (metrics.ascent - metrics.capHeight));
+}
+var CAP_TEXT_PARAMETERS = {
+  size: { kind: "length", default: 32, min: 1, description: "The type size, in px." },
+  lineHeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0.5,
+    description: "From one line to the next, as a multiple of the size."
+  },
+  letterSpacing: {
+    kind: "length",
+    default: 0,
+    description: "Space added between letters, in px."
+  },
+  align: {
+    kind: "choice",
+    default: "left",
+    choices: ["left", "center", "right"],
+    description: "Where each line sits across the block."
+  }
+};
+function capText(runs, area, given = {}, options = {}) {
+  const values = parameterValues(CAP_TEXT_PARAMETERS, given);
+  const metrics = options.metrics ?? DEFAULT_METRICS;
+  const box = Number.isFinite(area.width) ? { box: { w: area.width } } : {};
+  const node2 = text({
+    ...options.text,
+    ...options.name === void 0 ? {} : { name: options.name },
+    runs,
+    ...box,
+    align: values.align,
+    lineHeight: values.lineHeight,
+    letterSpacing: values.letterSpacing
+  });
+  const lines2 = options.lines ?? options.measure?.(node2)?.lines ?? linesWritten(runs);
+  const pitch = values.size * values.lineHeight;
+  const capTop = capOffset(values.size, values.lineHeight, metrics);
+  return {
+    ...block(Number.isFinite(area.width) ? area.width : 0, lines2 * pitch, node2),
+    anchor: { capTop, baseline: capTop + (lines2 - 1) * pitch + values.size * metrics.capHeight }
+  };
+}
+function linesWritten(runs) {
+  return runs.filter((each) => each.kind === "break").length + 1;
+}
+function plainRuns(words, style2) {
+  const [first = "", ...others] = words.split("\n");
+  return [run(first, style2), ...others.flatMap((line) => [lineBreak(), run(line, style2)])];
 }
 function lines(text5) {
   const result = [];
@@ -22739,6 +22795,11 @@ var GROWN_TEXT_PARAMETERS = {
     description: "The least height the block takes, in px, however few its lines."
   }
 };
+function capitals(value) {
+  return value.map(
+    (inline) => inline.kind === "text" ? { ...inline, value: inline.value.toLocaleUpperCase("pt-BR") } : inline
+  );
+}
 function imageHeight(asset, width, fallback) {
   const size = asset?.size;
   if (size === void 0 || !(size.w > 0) || !(size.h > 0)) return fallback;
@@ -23062,6 +23123,34 @@ var FRAMED_PICTURE_PARAMETERS = {
     description: "How much wider than the frame the shadow is on every side; below 0, narrower."
   }
 };
+var SIGNATURE_LINE_PARAMETERS = {
+  size: { kind: "length", default: 24, min: 1, description: "The type size, in px." },
+  letterSpacing: {
+    kind: "length",
+    default: 0,
+    description: "Space added between letters, in px."
+  },
+  lineHeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0.5,
+    description: "The line's height, as a multiple of the size."
+  },
+  align: {
+    kind: "choice",
+    default: "center",
+    choices: ["left", "center", "right"],
+    description: "Where the line sits across its area."
+  }
+};
+function signatureLine(words, area, style2, given = {}, options = {}) {
+  const values = parameterValues(SIGNATURE_LINE_PARAMETERS, given);
+  return capText(plainRuns(words, { ...style2, size: values.size }), area, values, {
+    name: options.name ?? "signature",
+    ...options.metrics === void 0 ? {} : { metrics: options.metrics },
+    ...options.text === void 0 ? {} : { text: options.text }
+  });
+}
 function piecesOf2(button) {
   const boxless = button.style.trailing === void 0 ? button.trailing : void 0;
   return [button.leading, button.words, boxless].filter(
@@ -23390,14 +23479,10 @@ var SEMIBOLD = 600;
 var EXTRABOLD = 800;
 var TITLE_TRACKING = -0.027;
 var METRICS = {
-  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
-  Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
-  CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 }
+  Newsreader: { ascent: 0.735, descent: 0.265, capHeight: 0.67 },
+  Roboto: { ascent: 0.928, descent: 0.244, capHeight: 0.711 },
+  CircularXX: { ascent: 0.75, descent: 0.25, capHeight: 0.709 }
 };
-function capOffset(family, size, lineHeight) {
-  const m = METRICS[family];
-  return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
-}
 var ESTIMATED_ADVANCE = 0.5;
 var SLIDE = { w: 1080, h: 1350 };
 var LOGO = { x: 109, y: 65, height: 70 };
@@ -23583,15 +23668,7 @@ function card(context, ink, top, sheet) {
       drawn("aba-tras", BACK_TAB, ink("back-tab")),
       drawn("seta", sheet.arrow, ink("ink")),
       drawn("aba-frente", FRONT_TAB, ink("card")),
-      plainText("assinatura", signatureOf(context.brand), {
-        family: "Roboto",
-        font: SANS,
-        x: SIGNATURE2.x,
-        capTop: SIGNATURE2.capTop,
-        size: SIGNATURE2.size,
-        weight: LIGHT,
-        color: ink("ink")
-      }),
+      signature(context, ink),
       at(
         CARD.x,
         CARD.tabs,
@@ -23606,6 +23683,16 @@ function card(context, ink, top, sheet) {
     ]
   });
 }
+function signature(context, ink) {
+  const line = signatureLine(
+    signatureOf(context.brand),
+    { width: Infinity, height: Infinity },
+    { font: SANS, weight: LIGHT, color: ink("ink") },
+    { size: SIGNATURE2.size, lineHeight: 1.2, align: "left" },
+    { name: "assinatura", metrics: METRICS.Roboto }
+  );
+  return at(SIGNATURE2.x, SIGNATURE2.capTop - anchorOf(line).capTop, line);
+}
 function stack(sections, top) {
   const nodes = [];
   let y = top;
@@ -23617,12 +23704,32 @@ function stack(sections, top) {
   return { nodes, bottom: y };
 }
 function textSection(context, name, runs, written, style2, gap, tuning) {
-  const drawnRuns = tuning?.runs ?? runs;
-  const spacing = tuning === void 0 ? {} : { spacing: tuning.letterSpacing };
-  const place = (capTop) => richText(name, drawnRuns, { ...style2, ...spacing, capTop });
-  const count = measuredLines(context, place(0), written, style2.size, style2.width);
-  const height = (count - 1) * style2.size * style2.lineHeight + style2.size * METRICS[style2.family].cap;
-  return { gap, height, draw: (top) => [place(top)], text: place(0) };
+  const set2 = capText(
+    nonEmpty(tuning?.runs ?? runs, style2.size),
+    { width: style2.width, height: Infinity },
+    {
+      size: style2.size,
+      lineHeight: style2.lineHeight,
+      letterSpacing: tuning?.letterSpacing ?? (style2.tracking ?? 0) * style2.size,
+      align: style2.align ?? "left"
+    },
+    {
+      name,
+      metrics: METRICS[style2.family],
+      measure: measuredOr(context, written, style2.size, style2.width)
+    }
+  );
+  const { capTop, baseline } = anchorOf(set2);
+  return {
+    gap,
+    height: baseline - capTop,
+    draw: (top) => [at(style2.x, top - capTop, set2)],
+    ...set2.draft.kind === "text" ? { text: set2.draft } : {}
+  };
+}
+function nonEmpty(runs, size) {
+  const [head, ...tail] = runs;
+  return [head ?? run("", { font: SANS, size, weight: REGULAR, color: "#000000" }), ...tail];
 }
 function bandSection(ink, name, inner, padding, edge, gap) {
   const height = padding.top + inner.height + padding.bottom;
@@ -23637,9 +23744,6 @@ function runsOfLines(written, style2, options) {
     ...index === 0 ? [] : [lineBreak()],
     ...runsOf(line, style2, options)
   ]);
-}
-function upper(item) {
-  return item.kind === "text" ? { ...item, text: item.text.toUpperCase() } : item;
 }
 function titleSections(context, ink, written, align) {
   if (written.length === 0) return [];
@@ -23665,10 +23769,10 @@ function titleSections(context, ink, written, align) {
   const main = rest.length > 0 ? rest : [...written];
   const sections = [];
   if (kicker.length > 0) {
-    const runs2 = runsOfLines(kicker, runStyle(TITLE3.kickerSize)).map(upper);
+    const runs2 = runsOfLines(kicker.map(capitals), runStyle(TITLE3.kickerSize));
     sections.push(textSection(context, "chapeu", runs2, kicker, textStyle(TITLE3.kickerSize), 0));
   }
-  const runs = runsOfLines(main, runStyle(TITLE3.size)).map(upper);
+  const runs = runsOfLines(main.map(capitals), runStyle(TITLE3.size));
   sections.push(
     textSection(context, "titulo", runs, main, textStyle(TITLE3.size), TITLE3.kickerToTitle)
   );
@@ -24054,40 +24158,15 @@ function fieldOf(context, name) {
 function richLine(words) {
   return [{ kind: "text", value: words, range: { start: 0, end: words.length } }];
 }
-function plainText(name, words, placed) {
-  const style2 = {
-    font: placed.font,
-    size: placed.size,
-    weight: placed.weight,
-    color: placed.color
+function measuredOr(context, written, size, width) {
+  return (node2) => {
+    const measured = context.measure(node2);
+    if (measured !== void 0) return { ...measured, lines: Math.max(1, measured.lines) };
+    const lines2 = estimated(written, size, width);
+    return { runs: node2.runs, lines: lines2, width, height: 0, scale: 1, overflow: 0 };
   };
-  const [first = "", ...others] = words.split("\n");
-  return richText(
-    name,
-    [run(first, style2), ...others.flatMap((line) => [lineBreak(), run(line, style2)])],
-    placed
-  );
 }
-function richText(name, runs, placed) {
-  const lineHeight = placed.lineHeight ?? 1.2;
-  const [head, ...tail] = runs;
-  const empty = run("", { font: SANS, size: placed.size, weight: REGULAR, color: "#000000" });
-  return text({
-    name,
-    runs: [head ?? empty, ...tail],
-    ...placed.width === void 0 ? {} : { box: { w: placed.width } },
-    align: placed.align ?? "left",
-    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
-    lineHeight,
-    transform: {
-      x: placed.x,
-      y: placed.capTop - capOffset(placed.family, placed.size, lineHeight)
-    }
-  });
-}
-function measuredLines(context, node2, written, size, width) {
-  const measured = context.measure(node2);
-  if (measured !== void 0) return Math.max(1, measured.lines);
+function estimated(written, size, width) {
   const perLine = Math.max(1, Math.floor(width / (size * ESTIMATED_ADVANCE)));
   const count = written.reduce(
     (sum, line) => sum + Math.max(1, Math.ceil([...plain(line)].length / perLine)),
