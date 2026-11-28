@@ -711,7 +711,7 @@ function band(ink: Ink, name: string, height: number, edge: 'side' | 'top'): rea
     ),
     // The body rounds two corners only, which the kit's `shape` does not draw, and its `icon`
     // from a path set the edges differently (measured, TYTO-894); until the kit draws it
-    // (TYTO-909), this is the one core node the template draws.
+    // (TYTO-909), this is the one core `rect` the template draws.
     rect({
       name: `${name}-corpo`,
       size:
