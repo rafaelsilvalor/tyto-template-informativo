@@ -72,9 +72,10 @@ import {
   settle,
   shape,
   signatureLine,
+  stackIn,
 } from '@tyto/template-kit';
 
-import type { FontMetrics, Icon, KeepTogetherRule } from '@tyto/template-kit';
+import type { Block, FontMetrics, Icon, KeepTogetherRule } from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -513,28 +514,33 @@ function signature(context: TemplateContext, ink: Ink): NodeDraft {
 
 /**
  * One section of the sheet: drawn only when the brief writes it, and stacked under the one
- * before it. `gap` is the space above it, from the bottom of what is above (a text's last
- * capitals, a band's edge) to its own top (its first capitals, its edge). A section the brief
- * leaves out takes its gap with it, so the next one stands where the reference stands it.
+ * before it by the kit's `stackIn`, measured from the capitals. `gapAbove` runs from the foot of
+ * what is above (a text's last capitals, a band's edge) to its own top (its first capitals, its
+ * edge). A section the brief leaves out takes its gap with it, so the next one stands where the
+ * reference stands it. Its block is in the sheet's x.
  */
 interface Section {
-  readonly gap: number;
-  readonly height: number;
-  readonly draw: (top: number) => readonly NodeDraft[];
+  readonly item: Block;
+  readonly gapAbove: number;
   /** The section's text, for `settle` to read its lines: where it stands does not matter. */
   readonly text?: TextDraft;
 }
 
-/** The sections one under another, from `top`, and the y of the last one's bottom. */
-function stack(sections: readonly Section[], top: number): { nodes: NodeDraft[]; bottom: number } {
-  const nodes: NodeDraft[] = [];
-  let y = top;
-  for (const [index, section] of sections.entries()) {
-    if (index > 0) y += section.gap;
-    nodes.push(...section.draw(y));
-    y += section.height;
-  }
-  return { nodes, bottom: y };
+/** A block moved right by `dx` inside its own box, its anchor kept. */
+function across(dx: number, item: Block): Block {
+  return { ...item, draft: at(dx, 0, item) };
+}
+
+/**
+ * The sections one under another, the first one's top (its capitals, its edge) at `top` on the
+ * sheet, and the y of the last one's foot.
+ */
+function stacked(sections: readonly Section[], top: number): { node: NodeDraft; bottom: number } {
+  const column = stackIn({ width: CARD.w, height: Infinity }, sections, {
+    measureFrom: 'capitals',
+  });
+  const { capTop, baseline } = anchorOf(column);
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 
 interface TextStyle {
@@ -575,11 +581,9 @@ function textSection(
       measure: measuredOr(context, written, style.size, style.width),
     },
   );
-  const { capTop, baseline } = anchorOf(set);
   return {
-    gap,
-    height: baseline - capTop,
-    draw: (top) => [at(style.x, top - capTop, set)],
+    item: across(style.x - CARD.x, set),
+    gapAbove: gap,
     ...(set.draft.kind === 'text' ? { text: set.draft } : {}),
   };
 }
@@ -590,7 +594,10 @@ function nonEmpty(runs: readonly TextRun[], size: number): [TextRun, ...TextRun[
   return [head ?? run('', { font: SANS, size, weight: REGULAR, color: '#000000' }), ...tail];
 }
 
-/** A text inside a band: the band's padding around the text section's own height. */
+/**
+ * A text inside a band: the band's padding around the text's capitals. The band's block carries
+ * no anchor, so the stack measures its gaps from the band's edges, not from the text inside.
+ */
 function bandSection(
   ink: Ink,
   name: string,
@@ -599,11 +606,17 @@ function bandSection(
   edge: 'side' | 'top',
   gap: number,
 ): Section {
-  const height = padding.top + inner.height + padding.bottom;
+  const { capTop, baseline } = anchorOf(inner.item);
+  const height = padding.top + (baseline - capTop) + padding.bottom;
   return {
-    gap,
-    height,
-    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)],
+    item: block(
+      CARD.w,
+      height,
+      group({
+        children: [...band(ink, name, height, edge), at(0, padding.top - capTop, inner.item)],
+      }),
+    ),
+    gapAbove: gap,
   };
 }
 
@@ -678,18 +691,12 @@ function withoutNumber(written: readonly RichText[]): RichText[] {
 }
 
 /** A band: the accent with its lighter edge on the left (`side`) or on top. */
-function band(
-  ink: Ink,
-  name: string,
-  y: number,
-  height: number,
-  edge: 'side' | 'top',
-): readonly NodeDraft[] {
+function band(ink: Ink, name: string, height: number, edge: 'side' | 'top'): readonly NodeDraft[] {
   const radius = 6;
   return [
     at(
-      INNER.bandX,
-      y,
+      INNER.bandX - CARD.x,
+      0,
       shape(
         { w: INNER.bandW, h: height },
         solid(ink('accent-edge')),
@@ -707,8 +714,8 @@ function band(
       fill: solid(ink('accent')),
       transform:
         edge === 'side'
-          ? { x: INNER.bandX + INNER.edge, y }
-          : { x: INNER.bandX, y: y + RULING.answerEdge },
+          ? { x: INNER.bandX - CARD.x + INNER.edge, y: 0 }
+          : { x: INNER.bandX - CARD.x, y: RULING.answerEdge },
     }),
   ];
 }
@@ -966,8 +973,8 @@ function layRuling(
     sections.push(section);
   }
 
-  const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
+  const { node, bottom } = stacked(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node], texts };
 }
 
 /** The question is italic throughout; its highlights take the highlight colour. */
@@ -1038,19 +1045,21 @@ function backCover(context: TemplateContext, ink: Ink): Sheet {
     );
   }
 
-  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
-  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
+  sections.push({ item: heart(ink), gapAbove: BACK.heartGap });
+  sections.push({ item: icons(ink), gapAbove: BACK.iconsGap });
 
-  const { nodes, bottom } = stack(sections, BACK.top);
-  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
+  const { node, bottom } = stacked(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: [node] };
 }
 
-function heart(ink: Ink, y: number): readonly NodeDraft[] {
+function heart(ink: Ink): Block {
   const { x, d } = BACK.heart;
-  return [
+  return block(
+    CARD.w,
+    d,
     at(
-      x,
-      y,
+      x - CARD.x,
+      0,
       iconInDisc(
         HEART,
         d,
@@ -1059,11 +1068,11 @@ function heart(ink: Ink, y: number): readonly NodeDraft[] {
         { name: 'coracao-disco', discName: 'coracao-fundo', iconName: 'coracao' },
       ),
     ),
-  ];
+  );
 }
 
 /** Comment, share and save, outlined in the ink. */
-function icons(ink: Ink, y: number): readonly NodeDraft[] {
+function icons(ink: Ink): Block {
   const { x } = BACK.icons;
   const outlined = { kind: 'stroke', width: 4 } as const;
   // Three buttons of the kit's `buttonRow`, each an icon alone (TYTO-884). The reference sets
@@ -1102,7 +1111,7 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
     ],
     { gap: GAP, name: 'icones' },
   );
-  return [at(x, y, row)];
+  return block(CARD.w, BACK.iconsHeight, at(x - CARD.x, 0, row));
 }
 
 /* -------------------------------------------------------------------------- the shared -- */

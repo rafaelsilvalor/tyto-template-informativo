@@ -5071,17 +5071,17 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack2, resolve) {
+function isRecursive(inst, stack, resolve) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
-  if (stack2.has(inst))
+  if (stack.has(inst))
     return PROVEN;
-  stack2.add(inst);
+  stack.add(inst);
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack2, resolve);
+      const answer = isRecursive(child, stack, resolve);
       if (answer > result)
         result = answer;
     }
@@ -5092,7 +5092,7 @@ function isRecursive(inst, stack2, resolve) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack2, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -5157,7 +5157,7 @@ function isRecursive(inst, stack2, resolve) {
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
       const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
-      merge2(inner ? isRecursive(inner, stack2, false) : ASSUMED);
+      merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
     // a leaf by choice: `parts` are regex fragments, not data positions
@@ -5200,7 +5200,7 @@ function isRecursive(inst, stack2, resolve) {
       }
     }
   }
-  stack2.delete(inst);
+  stack.delete(inst);
   return settle(inst, result);
 }
 function settle(inst, answer) {
@@ -22489,6 +22489,18 @@ function valueWithin(declared, value) {
 function anchorOf(item) {
   return item.anchor ?? { capTop: 0, baseline: item.height };
 }
+function anchorAcross(items, offsets) {
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (first === void 0 || last === void 0) return {};
+  if (!items.some((item) => item.anchor !== void 0)) return {};
+  return {
+    anchor: {
+      capTop: offsets[0] + anchorOf(first).capTop,
+      baseline: offsets[items.length - 1] + anchorOf(last).baseline
+    }
+  };
+}
 function shifted(draft, dx, dy) {
   const transform2 = {
     ...draft.transform,
@@ -22508,14 +22520,80 @@ function shifted(draft, dx, dy) {
       return { ...draft, transform: transform2 };
   }
 }
+function offsetFor(align, room, size) {
+  switch (align) {
+    case "start":
+      return 0;
+    case "center":
+      return (room - size) / 2;
+    case "end":
+      return room - size;
+  }
+}
 function block(width, height, draft) {
   return { width, height, draft };
 }
 function sized(draft) {
   return { width: draft.size.w, height: draft.size.h, draft };
 }
+function overrun(size, room) {
+  return Number.isFinite(room) ? Math.max(0, size - room) : 0;
+}
+var STACK_PARAMETERS = {
+  gap: {
+    kind: "length",
+    default: 0,
+    description: "Space between neighbours, in px; an item may state its own gap above it."
+  },
+  align: {
+    kind: "choice",
+    default: "start",
+    choices: ["start", "center", "end"],
+    description: "Where a narrower child sits across the stack."
+  },
+  measureFrom: {
+    kind: "choice",
+    default: "box",
+    choices: ["box", "capitals"],
+    description: "Where a gap runs from: one box's foot to the next one's top, or one block's last baseline to the next one's first capitals (ADR 0230 decision 2)."
+  }
+};
+function stackItemOf(entry) {
+  return "item" in entry ? { block: entry.item, gap: entry.gapAbove } : { block: entry };
+}
+function stackIn(area, items, given = {}, options = {}) {
+  const values = parameterValues(STACK_PARAMETERS, given);
+  const entries = items.map(stackItemOf);
+  const blocks = entries.map((entry) => entry.block);
+  const widest = blocks.reduce((most, item) => Math.max(most, item.width), 0);
+  const width = Number.isFinite(area.width) ? area.width : widest;
+  let y = 0;
+  const children = [];
+  const tops = [];
+  for (const [index, entry] of entries.entries()) {
+    const above = blocks[index - 1];
+    if (above !== void 0) {
+      const gap = entry.gap ?? values.gap;
+      y = values.measureFrom === "capitals" ? tops[index - 1] + anchorOf(above).baseline + gap - anchorOf(entry.block).capTop : y + (above.height + gap);
+    }
+    children.push(shifted(entry.block.draft, offsetFor(values.align, width, entry.block.width), y));
+    tops.push(y);
+  }
+  const last = blocks[blocks.length - 1];
+  const height = last === void 0 ? 0 : values.measureFrom === "capitals" ? y + last.height : y + (last.height + values.gap) - values.gap;
+  return {
+    width,
+    height,
+    draft: groupOf(children, options.name),
+    ...anchorAcross(blocks, tops),
+    overflow: overrun(height, area.height)
+  };
+}
 function at(x, y, item) {
   return shifted(item.draft, x, y);
+}
+function groupOf(children, name) {
+  return group({ children, ...name === void 0 ? {} : { name } });
 }
 var DEFAULT_METRICS = { ascent: 0.75, descent: 0.25, capHeight: 0.709 };
 function capOffset(size, lineHeight, metrics = DEFAULT_METRICS) {
@@ -23693,15 +23771,15 @@ function signature(context, ink) {
   );
   return at(SIGNATURE2.x, SIGNATURE2.capTop - anchorOf(line).capTop, line);
 }
-function stack(sections, top) {
-  const nodes = [];
-  let y = top;
-  for (const [index, section] of sections.entries()) {
-    if (index > 0) y += section.gap;
-    nodes.push(...section.draw(y));
-    y += section.height;
-  }
-  return { nodes, bottom: y };
+function across(dx, item) {
+  return { ...item, draft: at(dx, 0, item) };
+}
+function stacked(sections, top) {
+  const column = stackIn({ width: CARD.w, height: Infinity }, sections, {
+    measureFrom: "capitals"
+  });
+  const { capTop, baseline } = anchorOf(column);
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 function textSection(context, name, runs, written, style2, gap, tuning) {
   const set2 = capText(
@@ -23719,11 +23797,9 @@ function textSection(context, name, runs, written, style2, gap, tuning) {
       measure: measuredOr(context, written, style2.size, style2.width)
     }
   );
-  const { capTop, baseline } = anchorOf(set2);
   return {
-    gap,
-    height: baseline - capTop,
-    draw: (top) => [at(style2.x, top - capTop, set2)],
+    item: across(style2.x - CARD.x, set2),
+    gapAbove: gap,
     ...set2.draft.kind === "text" ? { text: set2.draft } : {}
   };
 }
@@ -23732,11 +23808,17 @@ function nonEmpty(runs, size) {
   return [head ?? run("", { font: SANS, size, weight: REGULAR, color: "#000000" }), ...tail];
 }
 function bandSection(ink, name, inner, padding, edge, gap) {
-  const height = padding.top + inner.height + padding.bottom;
+  const { capTop, baseline } = anchorOf(inner.item);
+  const height = padding.top + (baseline - capTop) + padding.bottom;
   return {
-    gap,
-    height,
-    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)]
+    item: block(
+      CARD.w,
+      height,
+      group({
+        children: [...band(ink, name, height, edge), at(0, padding.top - capTop, inner.item)]
+      })
+    ),
+    gapAbove: gap
   };
 }
 function runsOfLines(written, style2, options) {
@@ -23786,12 +23868,12 @@ function withoutNumber(written) {
   if (last === void 0) return [];
   return [...written.slice(0, -1), richLine(plain(last).replace(/\s+\d[\d.]*$/u, ""))];
 }
-function band(ink, name, y, height, edge) {
+function band(ink, name, height, edge) {
   const radius = 6;
   return [
     at(
-      INNER.bandX,
-      y,
+      INNER.bandX - CARD.x,
+      0,
       shape(
         { w: INNER.bandW, h: height },
         solid(ink("accent-edge")),
@@ -23804,7 +23886,7 @@ function band(ink, name, y, height, edge) {
       size: edge === "side" ? { w: INNER.bandW - INNER.edge, h: height } : { w: INNER.bandW, h: height - RULING.answerEdge },
       radius: edge === "side" ? [0, radius, radius, 0] : [0, 0, radius, radius],
       fill: solid(ink("accent")),
-      transform: edge === "side" ? { x: INNER.bandX + INNER.edge, y } : { x: INNER.bandX, y: y + RULING.answerEdge }
+      transform: edge === "side" ? { x: INNER.bandX - CARD.x + INNER.edge, y: 0 } : { x: INNER.bandX - CARD.x, y: RULING.answerEdge }
     })
   ];
 }
@@ -24015,8 +24097,8 @@ function layRuling(context, ink, parts, sizes, tunings) {
     if (section.text !== void 0) texts.set("fonte", section.text);
     sections.push(section);
   }
-  const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
+  const { node: node2, bottom } = stacked(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node2], texts };
 }
 function italic(item, highlight) {
   if (item.kind !== "text") return item;
@@ -24079,17 +24161,19 @@ function backCover(context, ink) {
       )
     );
   }
-  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
-  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
-  const { nodes, bottom } = stack(sections, BACK.top);
-  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
+  sections.push({ item: heart(ink), gapAbove: BACK.heartGap });
+  sections.push({ item: icons(ink), gapAbove: BACK.iconsGap });
+  const { node: node2, bottom } = stacked(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: [node2] };
 }
-function heart(ink, y) {
+function heart(ink) {
   const { x, d } = BACK.heart;
-  return [
+  return block(
+    CARD.w,
+    d,
     at(
-      x,
-      y,
+      x - CARD.x,
+      0,
       iconInDisc(
         HEART,
         d,
@@ -24098,9 +24182,9 @@ function heart(ink, y) {
         { name: "coracao-disco", discName: "coracao-fundo", iconName: "coracao" }
       )
     )
-  ];
+  );
 }
-function icons(ink, y) {
+function icons(ink) {
   const { x } = BACK.icons;
   const outlined = { kind: "stroke", width: 4 };
   const ROW = 48;
@@ -24128,7 +24212,7 @@ function icons(ink, y) {
     ],
     { gap: GAP, name: "icones" }
   );
-  return [at(x, y, row)];
+  return block(CARD.w, BACK.iconsHeight, at(x - CARD.x, 0, row));
 }
 function unfilledOf(context, node2) {
   const box = node2.box?.w;

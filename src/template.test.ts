@@ -99,8 +99,19 @@ const textOf = (node: Node | undefined): string =>
     .join('')
     .replaceAll(NO_BREAK_SPACE, ' ');
 
-const topOf = (context: TemplateContext, name: string): number =>
-  named(context, name)?.transform?.y ?? Number.NaN;
+/** A node's top on the card's content: its own y and every group's above it under `conteudo`. */
+const topOf = (context: TemplateContext, name: string): number => {
+  const search = (nodes: readonly Node[], above: number): number | undefined => {
+    for (const node of nodes) {
+      const y = above + (node.transform?.y ?? 0);
+      if (node.name === name) return y;
+      const found = search(node.children ?? [], y);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  return search(named(context, 'conteudo')?.children ?? [], 0) ?? Number.NaN;
+};
 
 /** The card's top and its height, tabs included. */
 function cardBox(context: TemplateContext): { top: number; height: number } {
