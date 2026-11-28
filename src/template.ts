@@ -817,7 +817,8 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
   // a pixel past the card's and the gap under the sheet must be at least that pixel: it fits
   // exactly when the sheet is no taller than the room. When even the floors do not fit, the
   // sheet is drawn at the floors and the overflow reported, here, by how far the sheet runs
-  // past the room: the kit would report the gap's shortfall, 1 px.
+  // past the room: the kit would report the gap's shortfall, 1 px. Both go when the kit fits
+  // and reports by the room itself (TYTO-916).
   const answerFloor = number('answer-floor');
   const sizesAt = (question: number) => ({
     question,
