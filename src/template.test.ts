@@ -220,6 +220,59 @@ describe('a ruling slide', () => {
     expect(reports.some((item) => item.code === 'W_TEMPLATE_OVERFLOW')).toBe(true);
   });
 
+  it('draws at the floors when even they do not fit, and reports it once', () => {
+    const reports: { code?: string }[] = [];
+    const huge: Fields = { pergunta: ['Pergunta '.repeat(60)], resposta: ['Resposta '.repeat(90)] };
+    const context = contextOf(huge, {
+      values: { 'answer-floor': 24 },
+      report: (item) => reports.push(item as { code?: string }),
+    });
+    expect(named(context, 'pergunta')?.runs?.[0]?.size).toBe(NUMBER_DEFAULTS['question-floor']);
+    // 32 × 28 / 40 = 22.4 in proportion, held at its floor of 24.
+    expect(named(context, 'resposta')?.runs?.[0]?.size).toBe(24);
+    reports.length = 0;
+    build(context);
+    expect(reports.filter((item) => item.code === 'W_TEMPLATE_OVERFLOW')).toHaveLength(1);
+  });
+
+  it('shrinks a pixel at a time, to the largest size whose card fits exactly', () => {
+    const fields: Fields = { pergunta: ['Pergunta longa '.repeat(20)] };
+    const at = (size: number, limit: number) =>
+      contextOf(fields, { values: { 'question-size': size, 'card-max-height': limit } });
+    const fits39 = cardBox(at(39, 1350)).height;
+    expect(cardBox(at(40, 1350)).height).toBeGreaterThan(fits39);
+
+    const reports: { code?: string }[] = [];
+    const context = contextOf(fields, {
+      values: { 'question-size': 40, 'card-max-height': fits39 },
+      report: (item) => reports.push(item as { code?: string }),
+    });
+    expect(named(context, 'pergunta')?.runs?.[0]?.size).toBe(39);
+    expect(cardBox(context).height).toBe(fits39);
+    expect(reports).toEqual([]);
+  });
+
+  it('reports a card that runs a few pixels past its limit at the floors', () => {
+    const fields: Fields = { pergunta: ['Pergunta longa '.repeat(30)] };
+    const floor = NUMBER_DEFAULTS['question-floor'];
+    const natural = cardBox(
+      contextOf(fields, { values: { 'question-size': floor, 'card-max-height': 1350 } }),
+    ).height;
+    const overflowsAt = (limit: number) => {
+      const reports: { code?: string }[] = [];
+      build(
+        contextOf(fields, {
+          values: { 'question-size': floor, 'card-max-height': limit },
+          report: (item) => reports.push(item as { code?: string }),
+        }),
+      );
+      return reports.filter((item) => item.code === 'W_TEMPLATE_OVERFLOW').length;
+    };
+    expect(natural - 5).toBeGreaterThanOrEqual(600);
+    expect(overflowsAt(natural)).toBe(0);
+    expect(overflowsAt(natural - 5)).toBe(1);
+  });
+
   it('sets the question in italic', () => {
     const runs = named(contextOf(ruling), 'pergunta')?.runs ?? [];
     expect(
