@@ -23250,88 +23250,6 @@ function fittedColumn(stackAt, room, given = {}, options = {}) {
   const arranged = arrange(tuning);
   return drawn(tuning, arranged.stacked, arranged.spaced.tops);
 }
-var PADDED_CARD_PARAMETERS = {
-  paddingTop: { kind: "length", default: 24, min: 0, description: "Above the content, in px." },
-  paddingRight: {
-    kind: "length",
-    default: 24,
-    min: 0,
-    description: "Right of the content, in px."
-  },
-  paddingBottom: {
-    kind: "length",
-    default: 24,
-    min: 0,
-    description: "Below the content, in px."
-  },
-  paddingLeft: {
-    kind: "length",
-    default: 24,
-    min: 0,
-    description: "Left of the content, in px."
-  },
-  radius: { kind: "length", default: 16, min: 0, description: "The card's corners, in px." },
-  measureFrom: {
-    kind: "choice",
-    default: "box",
-    choices: ["box", "capitals"],
-    description: "Where the top and bottom padding start: the content's box, or its first capitals and last baseline (ADR 0230)."
-  },
-  shadowX: { kind: "length", default: 0, description: "The shadow's offset to the right, in px." },
-  shadowY: { kind: "length", default: 4, description: "The shadow's offset down, in px." },
-  shadowBlur: {
-    kind: "length",
-    default: 8,
-    min: 0,
-    description: "The shadow's blur, a standard deviation in px."
-  },
-  shadowSpread: {
-    kind: "length",
-    default: 0,
-    description: "How much wider than the card the shadow is on every side, in px."
-  }
-};
-function paddedCard(content, paints, given = {}, options = {}) {
-  const values = parameterValues(PADDED_CARD_PARAMETERS, given);
-  const anchor2 = anchorOf(content);
-  const capitals2 = values.measureFrom === "capitals";
-  const inner = capitals2 ? anchor2.baseline - anchor2.capTop : content.height;
-  const size = {
-    w: values.paddingLeft + content.width + values.paddingRight,
-    h: values.paddingTop + inner + values.paddingBottom
-  };
-  const top = capitals2 ? values.paddingTop - anchor2.capTop : values.paddingTop;
-  const shadow = paints.shadow === void 0 ? {} : {
-    effects: [
-      {
-        kind: "shadow",
-        x: values.shadowX,
-        y: values.shadowY,
-        blur: values.shadowBlur,
-        spread: values.shadowSpread,
-        color: paints.shadow
-      }
-    ]
-  };
-  return {
-    width: size.w,
-    height: size.h,
-    draft: group({
-      name: options.name ?? "padded-card",
-      children: [
-        rect({
-          name: options.surfaceName ?? "card",
-          size,
-          radius: values.radius,
-          fill: paints.fill,
-          ...shadow
-        }),
-        at(values.paddingLeft, top, content)
-      ]
-    }),
-    ...content.anchor === void 0 ? {} : { anchor: { capTop: top + anchor2.capTop, baseline: top + anchor2.baseline } }
-  };
-}
 var PICTURE_SHAPE_PARAMETERS = {
   widest: {
     kind: "ratio",
@@ -23931,39 +23849,35 @@ var build = (context) => {
 };
 function card(context, ink, top, sheet) {
   const drawn = (name, piece, color2) => at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color2, name));
-  const content = block(
-    CARD.w,
-    sheet.height,
-    group({ name: "conteudo", children: sheet.children })
-  );
-  const surface = paddedCard(
-    content,
-    {
-      fill: solid(ink("card")),
-      shadow: { r: SHADOW.grey, g: SHADOW.grey, b: SHADOW.grey, a: SHADOW.alpha }
-    },
-    {
-      paddingTop: 0,
-      paddingRight: 0,
-      paddingBottom: 0,
-      paddingLeft: 0,
-      radius: CARD.radius,
-      shadowX: 0,
-      shadowY: SHADOW.y,
-      shadowBlur: SHADOW.blur,
-      shadowSpread: 0
-    },
-    { name: "cartao-folha", surfaceName: "folha" }
-  );
   return group({
     name: "cartao",
     transform: { x: 0, y: top },
+    effects: [
+      {
+        kind: "shadow",
+        x: 0,
+        y: SHADOW.y,
+        blur: SHADOW.blur,
+        spread: 0,
+        color: { r: SHADOW.grey, g: SHADOW.grey, b: SHADOW.grey, a: SHADOW.alpha }
+      }
+    ],
     children: [
       drawn("aba-tras", BACK_TAB, ink("back-tab")),
       drawn("seta", sheet.arrow, ink("ink")),
       drawn("aba-frente", FRONT_TAB, ink("card")),
       signature(context, ink),
-      at(CARD.x, CARD.tabs, surface)
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink("card")),
+          { kind: "rounded", radius: CARD.radius },
+          { name: "folha" }
+        )
+      ),
+      group({ name: "conteudo", transform: { y: CARD.tabs }, children: sheet.children })
     ]
   });
 }
@@ -23985,7 +23899,7 @@ function stacked(sections, top) {
     measureFrom: "capitals"
   });
   const { capTop, baseline } = anchorOf(column);
-  return { node: at(0, top - capTop, column), bottom: top - capTop + baseline };
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 function textSection(context, name, runs, written, style2, gap, tuning) {
   const set2 = capText(

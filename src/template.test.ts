@@ -99,8 +99,8 @@ const textOf = (node: Node | undefined): string =>
     .join('')
     .replaceAll(NO_BREAK_SPACE, ' ');
 
-/** A node's top under the named group: its own y and every group's above it, as the kit nests them. */
-const topIn = (context: TemplateContext, root: string, name: string): number => {
+/** A node's top on the card's content: its own y and every group's above it under `conteudo`. */
+const topOf = (context: TemplateContext, name: string): number => {
   const search = (nodes: readonly Node[], above: number): number | undefined => {
     for (const node of nodes) {
       const y = above + (node.transform?.y ?? 0);
@@ -110,17 +110,15 @@ const topIn = (context: TemplateContext, root: string, name: string): number => 
     }
     return undefined;
   };
-  return search(named(context, root)?.children ?? [], 0) ?? Number.NaN;
+  return search(named(context, 'conteudo')?.children ?? [], 0) ?? Number.NaN;
 };
-
-/** A node's top on the card's content. */
-const topOf = (context: TemplateContext, name: string): number => topIn(context, 'conteudo', name);
 
 /** The card's top and its height, tabs included. */
 function cardBox(context: TemplateContext): { top: number; height: number } {
   const sheet = named(context, 'folha');
   const top = named(context, 'cartao')?.transform?.y ?? Number.NaN;
-  return { top, height: topIn(context, 'cartao', 'folha') + (sheet?.size?.h ?? Number.NaN) };
+  const sheetTop = sheet?.transform?.y ?? Number.NaN;
+  return { top, height: sheetTop + (sheet?.size?.h ?? Number.NaN) };
 }
 
 const ruling: Fields = {

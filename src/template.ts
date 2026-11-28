@@ -67,7 +67,6 @@ import {
   iconInDisc,
   keepTogether,
   lines,
-  paddedCard,
   plain,
   reportOverflow,
   shape,
@@ -300,7 +299,7 @@ const INNER = {
 /** The signature on the front tab: Light 30 px, its capitals 22 px under the tabs' top. */
 const SIGNATURE = { x: 215, capTop: 22, size: 30 } as const;
 
-/** The sheet's shadow: multiply, 20 %, 90° at 7 px, size 142 (Photoshop) → blur 71. */
+/** The group shadow: multiply, 20 %, 90° at 7 px, size 142 (Photoshop) → blur 71. */
 const SHADOW = { y: 7, blur: 71, alpha: 0.2, grey: 49 } as const;
 
 /**
@@ -443,7 +442,7 @@ interface Sheet {
   readonly height: number;
   /** The arrow on the back tab. */
   readonly arrow: Piece;
-  /** Everything on the sheet, in x and y from the sheet's top left. */
+  /** Everything on the sheet, in y from the sheet's top. */
   readonly children: readonly NodeDraft[];
   /** The texts `settle` reads for an orphan, by field name. */
   readonly texts?: ReadonlyMap<string, TextDraft>;
@@ -463,42 +462,38 @@ type Ink = (name: ColorName) => string;
 function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): NodeDraft {
   const drawn = (name: string, piece: Piece, color: string): NodeDraft =>
     at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color, name));
-  // The sheet is the kit's `paddedCard`, its content unpadded, so the sheet is as tall as the
-  // stack makes it; its shadow is the reference's (multiply, 20 %, 90° at 7 px, size 142 → blur
-  // 71) cast from the sheet alone, the tabs above it unshadowed.
-  const content = block(
-    CARD.w,
-    sheet.height,
-    group({ name: 'conteudo', children: sheet.children }),
-  );
-  const surface = paddedCard(
-    content,
-    {
-      fill: solid(ink('card')),
-      shadow: { r: SHADOW.grey, g: SHADOW.grey, b: SHADOW.grey, a: SHADOW.alpha },
-    },
-    {
-      paddingTop: 0,
-      paddingRight: 0,
-      paddingBottom: 0,
-      paddingLeft: 0,
-      radius: CARD.radius,
-      shadowX: 0,
-      shadowY: SHADOW.y,
-      shadowBlur: SHADOW.blur,
-      shadowSpread: 0,
-    },
-    { name: 'cartao-folha', surfaceName: 'folha' },
-  );
+  // The shadow is the whole card's, tabs and sheet as one outline, and no kit piece casts one
+  // from a group: `paddedCard` casts it from its own surface alone. Until the card is that
+  // piece, this group is the one the template makes with the core's node.
   return group({
     name: 'cartao',
     transform: { x: 0, y: top },
+    effects: [
+      {
+        kind: 'shadow',
+        x: 0,
+        y: SHADOW.y,
+        blur: SHADOW.blur,
+        spread: 0,
+        color: { r: SHADOW.grey, g: SHADOW.grey, b: SHADOW.grey, a: SHADOW.alpha },
+      },
+    ],
     children: [
       drawn('aba-tras', BACK_TAB, ink('back-tab')),
       drawn('seta', sheet.arrow, ink('ink')),
       drawn('aba-frente', FRONT_TAB, ink('card')),
       signature(context, ink),
-      at(CARD.x, CARD.tabs, surface),
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink('card')),
+          { kind: 'rounded', radius: CARD.radius },
+          { name: 'folha' },
+        ),
+      ),
+      group({ name: 'conteudo', transform: { y: CARD.tabs }, children: sheet.children }),
     ],
   });
 }
@@ -545,7 +540,7 @@ function stacked(sections: readonly Section[], top: number): { node: NodeDraft; 
     measureFrom: 'capitals',
   });
   const { capTop, baseline } = anchorOf(column);
-  return { node: at(0, top - capTop, column), bottom: top - capTop + baseline };
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 
 interface TextStyle {
