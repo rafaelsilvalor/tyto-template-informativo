@@ -59,6 +59,9 @@ values:
   title-color: { type: color, default: '#b27c37' }
   ink: { type: color, default: '#4d4d4d' }
   on-accent: { type: color, default: '#ebeae9' }
+  # The highlight: `**…**` and `{cor:destaque}` in the question and the title.
+  # `highlight-color` is its old name, kept for configurations that write it.
+  destaque: { type: color, default: '#ae7d2e' }
   highlight-color: { type: color, default: '#ae7d2e' }
   logo: { type: color, default: '#ebeae9' }
   # The tallest the card may be, its tabs included: 135 px from each edge.

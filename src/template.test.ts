@@ -1,13 +1,13 @@
 import { noBrandKit } from '@tyto/core';
-import { NO_BREAK_SPACE } from '@tyto/template-kit';
+import { NO_BREAK_SPACE, roleOf } from '@tyto/template-kit';
 import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_CALL,
   DEFAULT_CLOSING,
   NUMBER_DEFAULTS,
+  ROLES,
   build,
-  roleOf,
   rulingOf,
 } from './template.js';
 
@@ -99,8 +99,19 @@ const textOf = (node: Node | undefined): string =>
     .join('')
     .replaceAll(NO_BREAK_SPACE, ' ');
 
-const topOf = (context: TemplateContext, name: string): number =>
-  named(context, name)?.transform?.y ?? Number.NaN;
+/** A node's top on the card's content: its own y and every group's above it under `conteudo`. */
+const topOf = (context: TemplateContext, name: string): number => {
+  const search = (nodes: readonly Node[], above: number): number | undefined => {
+    for (const node of nodes) {
+      const y = above + (node.transform?.y ?? 0);
+      if (node.name === name) return y;
+      const found = search(node.children ?? [], y);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  return search(named(context, 'conteudo')?.children ?? [], 0) ?? Number.NaN;
+};
 
 /** The card's top and its height, tabs included. */
 function cardBox(context: TemplateContext): { top: number; height: number } {
@@ -209,6 +220,59 @@ describe('a ruling slide', () => {
     expect(reports.some((item) => item.code === 'W_TEMPLATE_OVERFLOW')).toBe(true);
   });
 
+  it('draws at the floors when even they do not fit, and reports it once', () => {
+    const reports: { code?: string }[] = [];
+    const huge: Fields = { pergunta: ['Pergunta '.repeat(60)], resposta: ['Resposta '.repeat(90)] };
+    const context = contextOf(huge, {
+      values: { 'answer-floor': 24 },
+      report: (item) => reports.push(item as { code?: string }),
+    });
+    expect(named(context, 'pergunta')?.runs?.[0]?.size).toBe(NUMBER_DEFAULTS['question-floor']);
+    // 32 × 28 / 40 = 22.4 in proportion, held at its floor of 24.
+    expect(named(context, 'resposta')?.runs?.[0]?.size).toBe(24);
+    reports.length = 0;
+    build(context);
+    expect(reports.filter((item) => item.code === 'W_TEMPLATE_OVERFLOW')).toHaveLength(1);
+  });
+
+  it('shrinks a pixel at a time, to the largest size whose card fits exactly', () => {
+    const fields: Fields = { pergunta: ['Pergunta longa '.repeat(20)] };
+    const at = (size: number, limit: number) =>
+      contextOf(fields, { values: { 'question-size': size, 'card-max-height': limit } });
+    const fits39 = cardBox(at(39, 1350)).height;
+    expect(cardBox(at(40, 1350)).height).toBeGreaterThan(fits39);
+
+    const reports: { code?: string }[] = [];
+    const context = contextOf(fields, {
+      values: { 'question-size': 40, 'card-max-height': fits39 },
+      report: (item) => reports.push(item as { code?: string }),
+    });
+    expect(named(context, 'pergunta')?.runs?.[0]?.size).toBe(39);
+    expect(cardBox(context).height).toBe(fits39);
+    expect(reports).toEqual([]);
+  });
+
+  it('reports a card that runs a few pixels past its limit at the floors', () => {
+    const fields: Fields = { pergunta: ['Pergunta longa '.repeat(30)] };
+    const floor = NUMBER_DEFAULTS['question-floor'];
+    const natural = cardBox(
+      contextOf(fields, { values: { 'question-size': floor, 'card-max-height': 1350 } }),
+    ).height;
+    const overflowsAt = (limit: number) => {
+      const reports: { code?: string }[] = [];
+      build(
+        contextOf(fields, {
+          values: { 'question-size': floor, 'card-max-height': limit },
+          report: (item) => reports.push(item as { code?: string }),
+        }),
+      );
+      return reports.filter((item) => item.code === 'W_TEMPLATE_OVERFLOW').length;
+    };
+    expect(natural - 5).toBeGreaterThanOrEqual(600);
+    expect(overflowsAt(natural)).toBe(0);
+    expect(overflowsAt(natural - 5)).toBe(1);
+  });
+
   it('sets the question in italic', () => {
     const runs = named(contextOf(ruling), 'pergunta')?.runs ?? [];
     expect(
@@ -267,8 +331,8 @@ describe('the background and the paper', () => {
 
 describe('the back cover', () => {
   it('is chosen by the brief’s {contracapa}', () => {
-    expect(roleOf(contextOf({}, { contracapa: true }))).toBe('contracapa');
-    expect(roleOf(contextOf(ruling))).toBe('ruling');
+    expect(roleOf(contextOf({}, { contracapa: true }), ROLES).role).toBe('contracapa');
+    expect(roleOf(contextOf(ruling), ROLES).role).toBe('ruling');
   });
 
   it('says the reference’s words when nothing is written, and drops the title’s number', () => {

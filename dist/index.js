@@ -1025,9 +1025,9 @@ function stringifyPrimitive(value) {
     return `"${value}"`;
   return `${value}`;
 }
-function optionalKeys(shape) {
-  return Object.keys(shape).filter((k) => {
-    return shape[k]._zod.optin !== void 0 && shape[k]._zod.optout === "optional";
+function optionalKeys(shape2) {
+  return Object.keys(shape2).filter((k) => {
+    return shape2[k]._zod.optin !== void 0 && shape2[k]._zod.optout === "optional";
   });
 }
 var NUMBER_FORMAT_RANGES = /* @__PURE__ */ (() => ({
@@ -1076,33 +1076,33 @@ function omit(schema, mask) {
   mirrorShape(newShape, schema, Reflect.ownKeys(sourceShape(schema)).filter((key) => !omitted.has(key)));
   return clone(schema, mergeDefs(currDef, { shape: newShape, checks: [] }));
 }
-function extend(schema, shape) {
-  if (!isPlainObject(shape)) {
+function extend(schema, shape2) {
+  if (!isPlainObject(shape2)) {
     throw new Error("Invalid input to extend: expected a plain object");
   }
   const checks = schema._zod.def.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     const existingShape = sourceShape(schema);
-    for (const key of Reflect.ownKeys(shape)) {
+    for (const key of Reflect.ownKeys(shape2)) {
       if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
         throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
       }
     }
   }
-  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape) }));
+  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape2) }));
 }
-function extended(schema, shape) {
+function extended(schema, shape2) {
   const newShape = {};
   mirrorShape(newShape, schema, Reflect.ownKeys(sourceShape(schema)));
-  mirrorProps(newShape, shape);
+  mirrorProps(newShape, shape2);
   return newShape;
 }
-function safeExtend(schema, shape) {
-  if (!isPlainObject(shape)) {
+function safeExtend(schema, shape2) {
+  if (!isPlainObject(shape2)) {
     throw new Error("Invalid input to safeExtend: expected a plain object");
   }
-  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape) }));
+  return clone(schema, mergeDefs(schema._zod.def, { shape: extended(schema, shape2) }));
 }
 function merge(a, b) {
   if (!b?._zod?.def) {
@@ -3550,10 +3550,10 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   }
   const _normalized = cached(() => normalizeDef(def));
   defineLazyInternal(inst, "propValues", (zod) => {
-    const shape = zod.def.shape;
+    const shape2 = zod.def.shape;
     const propValues = {};
-    for (const key in shape) {
-      const field = shape[key]._zod;
+    for (const key in shape2) {
+      const field = shape2[key]._zod;
       if (field.values) {
         if (!Object.prototype.hasOwnProperty.call(propValues, key)) {
           assignProp(propValues, key, /* @__PURE__ */ new Set());
@@ -3585,7 +3585,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     }
     payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx) : {};
     const proms = [];
-    const shape = value.shape;
+    const shape2 = value.shape;
     const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const key of value.allKeys) {
@@ -3596,7 +3596,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       }
       if (key === "__proto__")
         continue;
-      const el = shape[key];
+      const el = shape2[key];
       const optin = el._zod.optin;
       const optout = el._zod.optout;
       const r = el._zod.run({ value: input2[key], issues: [] }, ctx);
@@ -3617,10 +3617,10 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   const superParse = inst._zod.parse;
   const _normalized = cached(() => normalizeDef(def));
   const memo2 = globalConfig.memoizer;
-  const generateFastpass = (shape) => {
+  const generateFastpass = (shape2) => {
     const normalized = _normalized.value;
     const syms = normalized.symbolKeys;
-    const doc = new Doc(["payload", "ctx"], { shape, inst, memo: memo2, syms });
+    const doc = new Doc(["payload", "ctx"], { shape: shape2, inst, memo: memo2, syms });
     const parseStr = (k) => `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
     const prefixStr = (id, k) => `
           let ${id}_ab = false;
@@ -3647,7 +3647,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
       const id = ids[key];
       const k = typeof key === "symbol" ? `syms[${syms.indexOf(key)}]` : esc(key);
       const isPresent = `${k} in input`;
-      const schema = shape[key];
+      const schema = shape2[key];
       const optin = schema?._zod?.optin;
       const isOptionalIn = optin !== void 0;
       const isOptionalOut = schema?._zod?.optout === "optional";
@@ -5071,34 +5071,34 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack2, resolve) {
+function isRecursive(inst, stack, resolve) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
-  if (stack2.has(inst))
+  if (stack.has(inst))
     return PROVEN;
-  stack2.add(inst);
+  stack.add(inst);
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack2, resolve);
+      const answer = isRecursive(child, stack, resolve);
       if (answer > result)
         result = answer;
     }
   };
-  const shape = (sh, spread) => {
+  const shape2 = (sh, spread) => {
     let answer = NONE;
     for (const key of Reflect.ownKeys(sh)) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack2, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
       if (child > answer)
         answer = child;
     }
     return answer;
   };
-  const merge2 = (answer) => {
+  const merge3 = (answer) => {
     if (answer > result)
       result = answer;
   };
@@ -5107,7 +5107,7 @@ function isRecursive(inst, stack2, resolve) {
   switch (kind) {
     case "object": {
       const raw = rawShape(def);
-      merge2(raw ? shape(raw, true) : ASSUMED);
+      merge3(raw ? shape2(raw, true) : ASSUMED);
       check2(def.catchall);
       break;
     }
@@ -5157,7 +5157,7 @@ function isRecursive(inst, stack2, resolve) {
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
       const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
-      merge2(inner ? isRecursive(inner, stack2, false) : ASSUMED);
+      merge3(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
     // a leaf by choice: `parts` are regex fragments, not data positions
@@ -5200,7 +5200,7 @@ function isRecursive(inst, stack2, resolve) {
       }
     }
   }
-  stack2.delete(inst);
+  stack.delete(inst);
   return settle(inst, result);
 }
 function settle(inst, answer) {
@@ -13318,12 +13318,12 @@ function generatePropertiesChecks(doc, ctx, def, accessor) {
     throw new ZodCompileUnsupportedError(`check with a custom "when" condition`);
   }
   doc.write(`if (${accessor} == null) return INVALID;`);
-  const shape = def.shape;
-  for (const key of Reflect.ownKeys(shape)) {
+  const shape2 = def.shape;
+  for (const key of Reflect.ownKeys(shape2)) {
     const keyExpr = typeof key === "symbol" ? addConstant(ctx, key) : esc(key);
     const inputVar = newVar(ctx);
     doc.write(`const ${inputVar} = ${accessor}[${keyExpr}];`);
-    compileChild(doc, ctx, shape[key], inputVar, false);
+    compileChild(doc, ctx, shape2[key], inputVar, false);
   }
 }
 function generatePropertyCheck(doc, ctx, def, accessor) {
@@ -13705,13 +13705,13 @@ function generateDateCheck(doc, accessor) {
 function generateObjectCheck(doc, ctx, schema, accessor, buildsValue = true) {
   const def = schema._zod.def;
   doc.write(`if (typeof ${accessor} !== "object" || ${accessor} === null || Array.isArray(${accessor})) return INVALID;`);
-  const shape = def.shape;
-  const keys = Object.keys(shape);
-  const symbolKeys = Object.getOwnPropertySymbols(shape);
+  const shape2 = def.shape;
+  const keys = Object.keys(shape2);
+  const symbolKeys = Object.getOwnPropertySymbols(shape2);
   const allKeys = symbolKeys.length ? [...keys, ...symbolKeys] : keys;
   const keyExpr = (k) => typeof k === "symbol" ? addConstant(ctx, k) : esc(k);
   const propKey = (k) => typeof k === "symbol" ? `[${keyExpr(k)}]` : esc(k);
-  const propShape = shape;
+  const propShape = shape2;
   if (keys.includes("__proto__")) {
     throw new ZodCompileUnsupportedError('object shape key "__proto__"');
   }
@@ -15218,10 +15218,10 @@ function _property(property, schema, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _properties(shape, params) {
+function _properties(shape2, params) {
   return new $ZodCheckProperties({
     check: "properties",
-    shape,
+    shape: shape2,
     ...normalizeParams(params)
   });
 }
@@ -16483,21 +16483,21 @@ function inputOptin(schema) {
 var objectProcessor = (schema, ctx, _json, params) => {
   const json2 = _json;
   const def = schema._zod.def;
-  const shape = def.shape;
-  const symbolKeys = Object.getOwnPropertySymbols(shape);
+  const shape2 = def.shape;
+  const symbolKeys = Object.getOwnPropertySymbols(shape2);
   if (symbolKeys.length && handleUnrepresentable(schema, ctx, json2, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
   json2.type = "object";
   json2.properties = {};
-  for (const key in shape) {
-    assignProp(json2.properties, key, processSchema(shape[key], ctx, {
+  for (const key in shape2) {
+    assignProp(json2.properties, key, processSchema(shape2[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
   }
   const requiredKeys = [];
-  for (const key of Object.keys(shape)) {
+  for (const key of Object.keys(shape2)) {
     const field = def.shape[key];
     if (ctx.io === "input" ? inputOptin(field) === void 0 : field._zod.optout === void 0) {
       requiredKeys.push(key);
@@ -18059,8 +18059,8 @@ function array(element, params) {
   return _array(ZodArray, element, params);
 }
 function keyof(schema) {
-  const shape = schema._zod.def.shape;
-  return _enum2(Object.keys(shape));
+  const shape2 = schema._zod.def.shape;
+  return _enum2(Object.keys(shape2));
 }
 var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
@@ -18112,26 +18112,26 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
     return util_exports.required(ZodNonOptional, this, args[0]);
   }
 });
-function object(shape, params) {
+function object(shape2, params) {
   const def = {
     type: "object",
-    shape: shape ?? {},
+    shape: shape2 ?? {},
     ...util_exports.normalizeParams(params)
   };
   return new ZodObject(def);
 }
-function strictObject(shape, params) {
+function strictObject(shape2, params) {
   return new ZodObject({
     type: "object",
-    shape,
+    shape: shape2,
     catchall: never(),
     ...util_exports.normalizeParams(params)
   });
 }
-function looseObject(shape, params) {
+function looseObject(shape2, params) {
   return new ZodObject({
     type: "object",
-    shape,
+    shape: shape2,
     catchall: unknown(),
     ...util_exports.normalizeParams(params)
   });
@@ -18670,8 +18670,8 @@ var meta2 = meta;
 var ZodInstanceOf = /* @__PURE__ */ $constructor("ZodInstanceOf", (inst, def) => {
   ZodCustom.init(inst, def);
 }, {
-  properties(shape, params) {
-    return this.check(_properties(shape, params));
+  properties(shape2, params) {
+    return this.check(_properties(shape2, params));
   }
 });
 function _instanceof(cls, params = {}) {
@@ -19257,13 +19257,13 @@ function convertBaseSchema(schema, ctx) {
       break;
     }
     case "object": {
-      const shape = {};
+      const shape2 = {};
       const properties = schema.properties || {};
       const requiredSet = new Set(schema.required || []);
       const additionalSchema = typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : void 0;
       for (const [key, propSchema] of Object.entries(properties)) {
         const propZodSchema = convertSchema(propSchema, ctx);
-        assignProp(shape, key, requiredSet.has(key) ? propZodSchema : propZodSchema.optional());
+        assignProp(shape2, key, requiredSet.has(key) ? propZodSchema : propZodSchema.optional());
       }
       if (schema.patternProperties) {
         const patternProps = schema.patternProperties;
@@ -19275,8 +19275,8 @@ function convertBaseSchema(schema, ctx) {
           looseRecords.push(z.looseRecord(keySchema, patternValue));
         }
         const schemasToIntersect = [];
-        if (Object.keys(shape).length > 0) {
-          schemasToIntersect.push(z.object(shape).passthrough());
+        if (Object.keys(shape2).length > 0) {
+          schemasToIntersect.push(z.object(shape2).passthrough());
         }
         schemasToIntersect.push(...looseRecords);
         if (schemasToIntersect.length === 0) {
@@ -19291,7 +19291,7 @@ function convertBaseSchema(schema, ctx) {
           zodSchema = result;
         }
         if (schema.additionalProperties === false) {
-          const propertyKeys = Object.keys(shape);
+          const propertyKeys = Object.keys(shape2);
           const patterns = patternKeys.map((p) => new RegExp(p));
           const basePatternSchema = zodSchema;
           zodSchema = zodSchema.check((payload) => {
@@ -19316,7 +19316,7 @@ function convertBaseSchema(schema, ctx) {
           });
         }
       } else {
-        const objectSchema = z.object(shape);
+        const objectSchema = z.object(shape2);
         if (schema.additionalProperties === false) {
           zodSchema = objectSchema.strict();
         } else if (additionalSchema) {
@@ -19721,7 +19721,7 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.59.0/node_modules/@rafaelsilvalor/tyto-core/dist/chunk-NUEMZ7BR.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.60.0/node_modules/@rafaelsilvalor/tyto-core/dist/chunk-W34XOUY2.js
 var SVG_MARKUP_WAY_OUT = "only flat shapes painted by presentation attributes are inlined: draw it as a contour (a vector of kind 'path'), place it as a PNG, or re-export it from Illustrator with Styling set to Presentation Attributes";
 var diagnosticCodes = {
   // Three syntax codes and not one, because fatality is a property of the code and one
@@ -22211,7 +22211,15 @@ function run(text2, options) {
     weight: options.weight ?? 400,
     style: options.style ?? "normal",
     color: paintOf(options.color),
-    ...options.decoration !== void 0 ? { decoration: options.decoration } : {}
+    ...options.decoration !== void 0 ? { decoration: options.decoration } : {},
+    ...options.box !== void 0 ? { box: boxOf(options.box) } : {}
+  };
+}
+function boxOf(box) {
+  return {
+    paint: typeof box.paint === "object" && "kind" in box.paint ? box.paint : { kind: "solid", color: color(box.paint) },
+    padding: { x: box.padding.x, over: box.padding.over, under: box.padding.under },
+    ...box.radius !== void 0 ? { radius: box.radius } : {}
   };
 }
 function lineBreak() {
@@ -22237,7 +22245,11 @@ function samePaint(a, b) {
   }
 }
 var sameFont = (a, b) => a.family === b.family && a.source === b.source && a.path === b.path;
-var sameStyle = (a, b) => a.size === b.size && a.weight === b.weight && a.style === b.style && a.decoration === b.decoration && sameFont(a.font, b.font) && samePaint(a.color, b.color);
+function sameBox(a, b) {
+  if (a === void 0 || b === void 0) return a === b;
+  return a.padding.x === b.padding.x && a.padding.over === b.padding.over && a.padding.under === b.padding.under && a.radius === b.radius && samePaint(a.paint, b.paint);
+}
+var sameStyle = (a, b) => a.size === b.size && a.weight === b.weight && a.style === b.style && a.decoration === b.decoration && sameFont(a.font, b.font) && samePaint(a.color, b.color) && sameBox(a.box, b.box);
 function absorbedByPrevious(target, produced, range) {
   const previous = target[target.length - 1];
   if (previous === void 0 || previous.kind !== "text") return false;
@@ -22319,7 +22331,7 @@ function imageValue(context, name) {
   return typeof value === "object" && "hash" in value ? value : void 0;
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.59.0/node_modules/@rafaelsilvalor/tyto-core/dist/template.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-core@0.60.0/node_modules/@rafaelsilvalor/tyto-core/dist/template.js
 function base(options) {
   return {
     transform: { ...identityTransform, ...options.transform },
@@ -22421,7 +22433,7 @@ function frame(options) {
   };
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.1/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-3KKHXN6D.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-3KKHXN6D.js
 var PAPER = "#fbfbfb";
 var INK = "#000000";
 var ZEBRA = "#f2f2f4";
@@ -22458,7 +22470,37 @@ var BODY = {
 };
 var OPTICAL_DROP = 0.15;
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.25.0/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.27.1/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
+function parameterValues(schema, given = {}) {
+  const values = {};
+  for (const [name, declared] of Object.entries(schema)) {
+    const value = given[name];
+    values[name] = valueWithin(declared, value);
+  }
+  return values;
+}
+function valueWithin(declared, value) {
+  if (declared.kind === "choice") {
+    return typeof value === "string" && declared.choices.includes(value) ? value : declared.default;
+  }
+  if (typeof value !== "number" || Number.isNaN(value)) return declared.default;
+  return Math.min(declared.max ?? Infinity, Math.max(declared.min ?? -Infinity, value));
+}
+function anchorOf(item) {
+  return item.anchor ?? { capTop: 0, baseline: item.height };
+}
+function anchorAcross(items, offsets) {
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (first === void 0 || last === void 0) return {};
+  if (!items.some((item) => item.anchor !== void 0)) return {};
+  return {
+    anchor: {
+      capTop: offsets[0] + anchorOf(first).capTop,
+      baseline: offsets[items.length - 1] + anchorOf(last).baseline
+    }
+  };
+}
 function shifted(draft, dx, dy) {
   const transform2 = {
     ...draft.transform,
@@ -22478,11 +22520,239 @@ function shifted(draft, dx, dy) {
       return { ...draft, transform: transform2 };
   }
 }
+function offsetFor(align, room, size) {
+  switch (align) {
+    case "start":
+      return 0;
+    case "center":
+      return (room - size) / 2;
+    case "end":
+      return room - size;
+  }
+}
 function block(width, height, draft) {
   return { width, height, draft };
 }
+function sized(draft) {
+  return { width: draft.size.w, height: draft.size.h, draft };
+}
+function overrun(size, room) {
+  return Number.isFinite(room) ? Math.max(0, size - room) : 0;
+}
+var STACK_PARAMETERS = {
+  gap: {
+    kind: "length",
+    default: 0,
+    description: "Space between neighbours, in px; an item may state its own gap above it."
+  },
+  align: {
+    kind: "choice",
+    default: "start",
+    choices: ["start", "center", "end"],
+    description: "Where a narrower child sits across the stack."
+  },
+  measureFrom: {
+    kind: "choice",
+    default: "box",
+    choices: ["box", "capitals"],
+    description: "Where a gap runs from: one box's foot to the next one's top, or one block's last baseline to the next one's first capitals (ADR 0230 decision 2)."
+  }
+};
+function stackItemOf(entry) {
+  return "item" in entry ? { block: entry.item, gap: entry.gapAbove } : { block: entry };
+}
+function stackIn(area, items, given = {}, options = {}) {
+  const values = parameterValues(STACK_PARAMETERS, given);
+  const entries = items.map(stackItemOf);
+  const blocks = entries.map((entry) => entry.block);
+  const widest = blocks.reduce((most, item) => Math.max(most, item.width), 0);
+  const width = Number.isFinite(area.width) ? area.width : widest;
+  let y = 0;
+  const children = [];
+  const tops = [];
+  for (const [index, entry] of entries.entries()) {
+    const above = blocks[index - 1];
+    if (above !== void 0) {
+      const gap = entry.gap ?? values.gap;
+      y = values.measureFrom === "capitals" ? tops[index - 1] + anchorOf(above).baseline + gap - anchorOf(entry.block).capTop : y + (above.height + gap);
+    }
+    children.push(shifted(entry.block.draft, offsetFor(values.align, width, entry.block.width), y));
+    tops.push(y);
+  }
+  const last = blocks[blocks.length - 1];
+  const height = last === void 0 ? 0 : values.measureFrom === "capitals" ? y + last.height : y + (last.height + values.gap) - values.gap;
+  return {
+    width,
+    height,
+    draft: groupOf(children, options.name),
+    ...anchorAcross(blocks, tops),
+    overflow: overrun(height, area.height)
+  };
+}
 function at(x, y, item) {
   return shifted(item.draft, x, y);
+}
+function groupOf(children, name) {
+  return group({ children, ...name === void 0 ? {} : { name } });
+}
+var DEFAULT_METRICS = { ascent: 0.75, descent: 0.25, capHeight: 0.709 };
+function capOffset(size, lineHeight, metrics = DEFAULT_METRICS) {
+  const excess = (lineHeight - (metrics.ascent + metrics.descent)) / 2;
+  return size * (excess + (metrics.ascent - metrics.capHeight));
+}
+var CAP_TEXT_PARAMETERS = {
+  size: { kind: "length", default: 32, min: 1, description: "The type size, in px." },
+  lineHeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0.5,
+    description: "From one line to the next, as a multiple of the size."
+  },
+  letterSpacing: {
+    kind: "length",
+    default: 0,
+    description: "Space added between letters, in px."
+  },
+  align: {
+    kind: "choice",
+    default: "left",
+    choices: ["left", "center", "right"],
+    description: "Where each line sits across the block."
+  }
+};
+function capText(runs, area, given = {}, options = {}) {
+  const values = parameterValues(CAP_TEXT_PARAMETERS, given);
+  const metrics = options.metrics ?? DEFAULT_METRICS;
+  const box = Number.isFinite(area.width) ? { box: { w: area.width } } : {};
+  const node2 = text({
+    ...options.text,
+    ...options.name === void 0 ? {} : { name: options.name },
+    runs,
+    ...box,
+    align: values.align,
+    lineHeight: values.lineHeight,
+    letterSpacing: values.letterSpacing
+  });
+  const lines2 = options.lines ?? options.measure?.(node2)?.lines ?? linesWritten(runs);
+  const pitch = values.size * values.lineHeight;
+  const capTop = capOffset(values.size, values.lineHeight, metrics);
+  return {
+    ...block(Number.isFinite(area.width) ? area.width : 0, lines2 * pitch, node2),
+    anchor: { capTop, baseline: capTop + (lines2 - 1) * pitch + values.size * metrics.capHeight }
+  };
+}
+function linesWritten(runs) {
+  return runs.filter((each) => each.kind === "break").length + 1;
+}
+function plainRuns(words, style2) {
+  const [first = "", ...others] = words.split("\n");
+  return [run(first, style2), ...others.flatMap((line) => [lineBreak(), run(line, style2)])];
+}
+var HIGHLIGHT_WEIGHT = 700;
+function mergeFamilies(base2, over) {
+  if (over === void 0) return base2;
+  const merged = { ...base2 };
+  for (const [key, family] of Object.entries(over)) {
+    const previous = merged[key];
+    const like = family.like ?? previous?.like;
+    merged[key] = {
+      ...like === void 0 ? {} : { like },
+      values: { ...previous?.values, ...family.values }
+    };
+  }
+  return merged;
+}
+function merge2(base2, over) {
+  const marks = mergeFamilies(base2.marks, over.marks);
+  return {
+    bold: { ...base2.bold, ...over.bold },
+    italic: { ...base2.italic, ...over.italic },
+    ...marks === void 0 ? {} : { marks }
+  };
+}
+function markStyle(spec, key, value) {
+  const family = spec.marks?.[key];
+  const named = family?.values[value];
+  if (family === void 0 || named === void 0) return void 0;
+  switch (family.like) {
+    case "bold":
+      return { weight: HIGHLIGHT_WEIGHT, ...spec.bold, ...named };
+    case "italic":
+      return { ...spec.italic, ...named, style: "italic" };
+    default:
+      return named;
+  }
+}
+function highlights(spec) {
+  return {
+    spec,
+    options: {
+      bold: { weight: HIGHLIGHT_WEIGHT, ...spec.bold },
+      italic: spec.italic ?? {},
+      mark: (key, value) => markStyle(spec, key, value)
+    },
+    with: (override) => highlights(merge2(spec, override))
+  };
+}
+function lines(text5) {
+  const result = [];
+  let current = [];
+  for (const inline of text5) {
+    if (inline.kind === "break") {
+      result.push(current);
+      current = [];
+      continue;
+    }
+    current.push(inline);
+  }
+  result.push(current);
+  return result.filter((line) => plain(line).trim() !== "");
+}
+function plain(text5) {
+  return text5.map((inline) => {
+    switch (inline.kind) {
+      case "text":
+        return inline.value;
+      case "break":
+        return "\n";
+      default:
+        return plain(inline.children);
+    }
+  }).join("");
+}
+var SHAPE_PARAMETERS = {
+  kind: {
+    kind: "choice",
+    default: "rect",
+    choices: ["rect", "rounded", "capsule", "circle"],
+    description: "A rectangle, one with rounded corners, one rounded whole at its short ends, or a circle."
+  },
+  radius: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The corners' radius for `rounded`; the others ignore it."
+  }
+};
+function shape(size, fill, given = {}, options = {}) {
+  const values = parameterValues(SHAPE_PARAMETERS, given);
+  const box = values.kind === "circle" ? { w: size.w, h: size.w } : size;
+  const radius = values.kind === "rounded" ? values.radius : values.kind === "capsule" ? Math.min(box.w, box.h) / 2 : values.kind === "circle" ? box.w / 2 : 0;
+  return sized(
+    rect({
+      ...options.name === void 0 ? {} : { name: options.name },
+      size: box,
+      ...radius === 0 ? {} : { radius },
+      ...fill === void 0 ? {} : { fill },
+      ...options.outline === void 0 ? {} : {
+        stroke: {
+          paint: options.outline.paint,
+          width: options.outline.width,
+          align: options.outline.align ?? "center"
+        }
+      }
+    })
+  );
 }
 var NO_BREAK_SPACE = "\xA0";
 var NUMBER = String.raw`\d[\d.,]*`;
@@ -22537,13 +22807,13 @@ var KEEP_TOGETHER_RULES = [
     after: String.raw`(?:${UNITS.join("|")})(?!\p{L})`
   }
 ];
-function keepTogetherText(text2, rules = KEEP_TOGETHER_RULES) {
+function keepTogetherText(text5, rules = KEEP_TOGETHER_RULES) {
   return rules.reduce(
-    (glued, rule) => glued.replace(
-      new RegExp(`(?<=${rule.before})( +)(?=${rule.after})`, "gu"),
+    (glued, rule2) => glued.replace(
+      new RegExp(`(?<=${rule2.before})( +)(?=${rule2.after})`, "gu"),
       (spaces) => NO_BREAK_SPACE.repeat(spaces.length)
     ),
-    text2
+    text5
   );
 }
 function keepTogether(value, rules = KEEP_TOGETHER_RULES) {
@@ -22581,49 +22851,189 @@ var LABEL_EXCEPTIONS = [
   { name: "a time", pattern: String.raw`\d{1,2}:\d{2}` },
   { name: "a URL", pattern: String.raw`\p{L}[\p{L}\d+.-]*://\S*` }
 ];
-function mark(shape, height, fill, name) {
-  const scale = height / shape.box.h;
-  return block(
-    shape.box.w * scale,
-    height,
-    vector({
-      name,
-      geometry: { kind: "path", d: shape.d, fillRule: shape.fillRule },
-      size: shape.box,
-      fill: solid(fill),
-      transform: { scaleX: scale, scaleY: scale }
-    })
-  );
+function mark(shape2, height, fill, name) {
+  const drawn = markIn(shape2, { width: Infinity, height }, fill, {}, { name });
+  return { width: drawn.width, height: drawn.height, draft: drawn.draft };
 }
-function lines(text2) {
-  const result = [];
-  let current = [];
-  for (const inline of text2) {
-    if (inline.kind === "break") {
-      result.push(current);
-      current = [];
-      continue;
-    }
-    current.push(inline);
+var MARK_PARAMETERS = {
+  height: {
+    kind: "length",
+    default: 24,
+    min: 0,
+    description: "The mark's height, in px; absent, the area's height when it has one."
   }
-  result.push(current);
-  return result.filter((line) => plain(line).trim() !== "");
+};
+function markIn(shape2, area, fill, given = {}, options = {}) {
+  const values = parameterValues(MARK_PARAMETERS, given);
+  const height = given.height !== void 0 || !Number.isFinite(area.height) ? values.height : area.height;
+  const scale = height / shape2.box.h;
+  const width = shape2.box.w * scale;
+  return {
+    ...block(
+      width,
+      height,
+      vector({
+        name: options.name ?? "mark",
+        geometry: { kind: "path", d: shape2.d, fillRule: shape2.fillRule },
+        size: shape2.box,
+        fill: solid(fill),
+        transform: { scaleX: scale, scaleY: scale }
+      })
+    ),
+    overflow: Number.isFinite(area.width) ? Math.max(0, width - area.width) : 0
+  };
 }
-function plain(text2) {
-  return text2.map((inline) => {
-    switch (inline.kind) {
-      case "text":
-        return inline.value;
-      case "break":
-        return "\n";
-      default:
-        return plain(inline.children);
-    }
-  }).join("");
+var TEXT_PARAMETERS = {
+  lineHeight: {
+    kind: "ratio",
+    default: 1.2,
+    min: 0,
+    description: "From one line to the next, as a multiple of the size."
+  },
+  letterSpacing: { kind: "length", default: 0, description: "Space added between letters, in px." },
+  align: {
+    kind: "choice",
+    default: "left",
+    choices: ["left", "center", "right", "justify"],
+    description: "Where each line sits across the box."
+  },
+  valign: {
+    kind: "choice",
+    default: "top",
+    choices: ["top", "middle", "bottom"],
+    description: "Where the lines sit down the box."
+  },
+  overflow: {
+    kind: "choice",
+    default: "clip",
+    choices: ["clip", "shrink", "grow"],
+    description: "What the text does when it does not fit its box."
+  }
+};
+var GROWN_TEXT_PARAMETERS = {
+  ...TEXT_PARAMETERS,
+  minHeight: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The least height the block takes, in px, however few its lines."
+  }
+};
+function imageHeight(asset, width, fallback) {
+  const size = asset?.size;
+  if (size === void 0 || !(size.w > 0) || !(size.h > 0)) return fallback;
+  return width * size.h / size.w;
 }
 function reportOverflow(report, bottom, limit) {
   const overflow = bottom - limit;
   if (overflow > 0) report({ code: "W_TEMPLATE_OVERFLOW", overflow });
+}
+var FIT_TEXT_PARAMETERS = {
+  floor: { kind: "length", default: 24, min: 1, description: "The smallest size, in px." },
+  ceiling: { kind: "length", default: 48, min: 1, description: "The largest size, in px." },
+  step: {
+    kind: "length",
+    default: 1,
+    min: 0,
+    description: "From one size tried to the next, in px. 0 is continuous: `oneLine` solves for the size that makes the line exactly as wide as the area."
+  },
+  start: {
+    kind: "choice",
+    default: "ceiling",
+    choices: ["ceiling", "whole"],
+    description: "The first size tried: the ceiling itself, or the whole pixel at or under it."
+  },
+  floorLast: {
+    kind: "choice",
+    default: "always",
+    choices: ["always", "on-step"],
+    description: "Whether the floor is tried last even when the step misses it, or only if hit."
+  },
+  lineHeight: {
+    kind: "ratio",
+    default: 1.2,
+    min: 0.5,
+    description: "From one line to the next, as a multiple of the size."
+  },
+  lineCap: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The most lines a fitting size may take; 0 is no cap."
+  },
+  keepWrittenLines: {
+    kind: "choice",
+    default: "no",
+    choices: ["first", "no"],
+    description: "`first`: look for a size that keeps the lines as written before one that wraps them."
+  },
+  widthTolerance: {
+    kind: "length",
+    default: 0.5,
+    min: 0,
+    description: "Px a line may run past the area and still fit, for the rounding of a measure."
+  },
+  measureFrom: {
+    kind: "choice",
+    default: "box",
+    choices: ["box", "capitals"],
+    description: "How tall the text is against the area: its line boxes, or from its first capitals to its last baseline (ADR 0230)."
+  },
+  estimatedAdvance: {
+    kind: "ratio",
+    default: 0.55,
+    min: 0,
+    description: "A character's advance, in em, when nothing can measure the text."
+  },
+  align: {
+    kind: "choice",
+    default: "left",
+    choices: ["left", "center", "right"],
+    description: "Where each line sits across the area."
+  }
+};
+function fitSizes(given = {}) {
+  const values = parameterValues(FIT_TEXT_PARAMETERS, given);
+  const floor = values.floor;
+  const ceiling = Math.max(floor, values.ceiling);
+  const start = values.start === "whole" ? Math.floor(ceiling) : ceiling;
+  if (values.step === 0) return start === floor ? [floor] : [start, floor];
+  const sizes = [];
+  if (values.floorLast === "always") {
+    for (let size = start; size > floor; size -= values.step) sizes.push(size);
+    sizes.push(floor);
+  } else {
+    for (let size = start; size >= floor; size -= values.step) sizes.push(size);
+  }
+  return sizes;
+}
+function weightedSpacing(spacing) {
+  const { top, bottom, heights, weights } = spacing;
+  if (weights.length !== heights.length + 1) {
+    return { ok: false, error: { expected: heights.length + 1, got: weights.length } };
+  }
+  const used = heights.reduce((sum, height) => sum + height, 0);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const free = bottom - top - used;
+  const unit = free > 0 && totalWeight > 0 ? free / totalWeight : 0;
+  const tops = [];
+  let cursor = top;
+  heights.forEach((height, index) => {
+    cursor += (weights[index] ?? 0) * unit;
+    tops.push(cursor);
+    cursor += height;
+  });
+  return { ok: true, value: { tops, unit, overflow: Math.max(0, -free) }, diagnostics: [] };
+}
+function spaceByWeight(spacing) {
+  const spaced = weightedSpacing(spacing);
+  if (!spaced.ok) {
+    const { heights, weights } = spacing;
+    throw new RangeError(
+      `spaceByWeight takes ${String(heights.length + 1)} weights for ${String(heights.length)} blocks, got ${String(weights.length)}`
+    );
+  }
+  return spaced.value;
 }
 var ORPHAN_LIMITS = { shrink: 0.08, tracking: 0.01 };
 var SIZE_STEP = 1;
@@ -22632,9 +23042,9 @@ function settle2(request) {
   const { size, layout, measure } = request;
   const limits = request.limits ?? ORPHAN_LIMITS;
   const first = layout({ size, letterSpacing: 0 });
-  const orphanAt = (text2) => {
-    const measured2 = measure(text2);
-    return measured2 === void 0 ? void 0 : orphanOf(text2.runs, measured2.runs);
+  const orphanAt = (text5) => {
+    const measured2 = measure(text5);
+    return measured2 === void 0 ? void 0 : orphanOf(text5.runs, measured2.runs);
   };
   const measured = measure(first.text);
   const found = measured === void 0 ? void 0 : orphanOf(first.text.runs, measured.runs);
@@ -22676,8 +23086,8 @@ function orphanOf(written, laid) {
   return firstOrphaned(written, laid)?.word;
 }
 function firstOrphaned(written, laid) {
-  const paragraphs = linesOf(written).map((line2) => wordsOf(line2).length);
-  const lines2 = linesOf(laid);
+  const paragraphs = linesOf2(written).map((line2) => wordsOf(line2).length);
+  const lines2 = linesOf2(laid);
   let line = 0;
   for (const [paragraph, count] of paragraphs.entries()) {
     if (count === 0) {
@@ -22687,9 +23097,9 @@ function firstOrphaned(written, laid) {
     let seen = 0;
     const taken = [];
     while (seen < count && line < lines2.length) {
-      const text2 = lines2[line] ?? "";
-      seen += wordsOf(text2).length;
-      taken.push(text2);
+      const text5 = lines2[line] ?? "";
+      seen += wordsOf(text5).length;
+      taken.push(text5);
       line += 1;
     }
     const last = wordsOf(taken.at(-1) ?? "");
@@ -22707,46 +23117,46 @@ function rebreak(written, laid) {
   if (moved <= 0) return void 0;
   return withBreakBefore(written, orphaned.paragraph, moved);
 }
-function pieceStarts(text2) {
+function pieceStarts(text5) {
   const starts = [];
-  for (let index = 0; index < text2.length; index += 1) {
-    if (text2[index] === " " || index > 0 && text2[index - 1] !== " ") continue;
-    const end = text2.indexOf(" ", index);
-    const word = text2.slice(index, end < 0 ? void 0 : end);
+  for (let index = 0; index < text5.length; index += 1) {
+    if (text5[index] === " " || index > 0 && text5[index - 1] !== " ") continue;
+    const end = text5.indexOf(" ", index);
+    const word = text5.slice(index, end < 0 ? void 0 : end);
     if (starts.length === 0 || !isStandaloneOperator(word)) starts.push(index);
   }
   return starts;
 }
 function withBreakBefore(runs, paragraph, piece) {
-  const cut2 = pieceStarts(linesOf(runs)[paragraph] ?? "")[piece];
+  const cut2 = pieceStarts(linesOf2(runs)[paragraph] ?? "")[piece];
   if (cut2 === void 0) return [...runs];
   const result = [];
   let current = 0;
   let offset = 0;
   let done = false;
-  for (const run2 of runs) {
-    if (run2.kind === "break") {
+  for (const run5 of runs) {
+    if (run5.kind === "break") {
       current += 1;
-      result.push(run2);
+      result.push(run5);
       continue;
     }
     const start = offset;
-    if (current === paragraph) offset += textOf(run2).length;
+    if (current === paragraph) offset += textOf(run5).length;
     if (done || current !== paragraph || cut2 >= offset) {
-      result.push(run2);
+      result.push(run5);
       continue;
     }
-    if (run2.kind === "formula") {
+    if (run5.kind === "formula") {
       trimLast(result);
-      result.push({ kind: "break" }, run2);
+      result.push({ kind: "break" }, run5);
       done = true;
       continue;
     }
     const at2 = cut2 - start;
-    const head = run2.text.slice(0, at2).replace(/ +$/u, "");
-    if (head !== "") result.push({ ...run2, text: head });
+    const head = run5.text.slice(0, at2).replace(/ +$/u, "");
+    if (head !== "") result.push({ ...run5, text: head });
     else trimLast(result);
-    result.push({ kind: "break" }, { ...run2, text: run2.text.slice(at2) });
+    result.push({ kind: "break" }, { ...run5, text: run5.text.slice(at2) });
     done = true;
   }
   return result;
@@ -22754,19 +23164,19 @@ function withBreakBefore(runs, paragraph, piece) {
 function trimLast(runs) {
   const last = runs.at(-1);
   if (last?.kind !== "text") return;
-  const text2 = last.text.replace(/ +$/u, "");
-  if (text2 === "") runs.pop();
-  else runs[runs.length - 1] = { ...last, text: text2 };
+  const text5 = last.text.replace(/ +$/u, "");
+  if (text5 === "") runs.pop();
+  else runs[runs.length - 1] = { ...last, text: text5 };
 }
 var FORMULA_TEXT = "\uFFFC";
-function textOf(run2) {
-  return run2.kind === "formula" ? FORMULA_TEXT : run2.text;
+function textOf(run5) {
+  return run5.kind === "formula" ? FORMULA_TEXT : run5.text;
 }
-function linesOf(runs) {
+function linesOf2(runs) {
   const lines2 = [""];
-  for (const run2 of runs) {
-    if (run2.kind === "break") lines2.push("");
-    else lines2[lines2.length - 1] += textOf(run2);
+  for (const run5 of runs) {
+    if (run5.kind === "break") lines2.push("");
+    else lines2[lines2.length - 1] += textOf(run5);
   }
   return lines2;
 }
@@ -22776,6 +23186,230 @@ function wordsOf(line) {
 function reportOrphan(report, word) {
   if (word !== void 0)
     report({ code: "W_TEMPLATE_ORPHAN", word: [...word].slice(0, ORPHAN_WORD_LIMIT).join("") });
+}
+var FITTED_COLUMN_PARAMETERS = {
+  floor: FIT_TEXT_PARAMETERS.floor,
+  ceiling: FIT_TEXT_PARAMETERS.ceiling,
+  step: FIT_TEXT_PARAMETERS.step,
+  start: FIT_TEXT_PARAMETERS.start,
+  floorLast: FIT_TEXT_PARAMETERS.floorLast,
+  gapFloor: {
+    kind: "length",
+    default: 24,
+    min: 0,
+    description: "The least a gap's unit may be, in px: a gap of weight w is at least w \xD7 this."
+  },
+  orphanShrink: {
+    kind: "ratio",
+    default: ORPHAN_LIMITS.shrink,
+    min: 0,
+    description: "How far under its fitted size the text may go to keep a word off a line alone."
+  },
+  orphanTracking: {
+    kind: "length",
+    default: ORPHAN_LIMITS.tracking,
+    min: 0,
+    description: "The most letter spacing, in em, a text may take or give for the same."
+  }
+};
+function fittedColumn(stackAt, room, given = {}, options = {}) {
+  const values = parameterValues(FITTED_COLUMN_PARAMETERS, given);
+  const measure = options.measure ?? (() => void 0);
+  const report = options.report ?? (() => void 0);
+  const limits = { shrink: values.orphanShrink, tracking: values.orphanTracking };
+  const arrange = (tuning2) => {
+    const stacked2 = stackAt(tuning2);
+    const heights = stacked2.pieces.map((piece) => piece.height);
+    const spaced = spaceByWeight({
+      top: room.top,
+      bottom: room.bottom,
+      heights,
+      weights: stacked2.weights
+    });
+    return { stacked: stacked2, spaced, fits: spaced.unit >= values.gapFloor };
+  };
+  const plainAt = (size) => ({ size, letterSpacing: 0, extras: [] });
+  const drawn = (tuning2, stacked2, tops) => ({
+    ...block(
+      room.width,
+      room.bottom,
+      group({
+        ...options.name === void 0 ? {} : { name: options.name },
+        children: stacked2.pieces.flatMap((piece, index) => piece.place(tops[index] ?? room.top))
+      })
+    ),
+    tuning: tuning2
+  });
+  const fitted = fitSizes(values).find((size) => arrange(plainAt(size)).fits);
+  if (fitted === void 0) {
+    const tuning2 = plainAt(values.floor);
+    const arranged2 = arrange(tuning2);
+    const weight = arranged2.stacked.weights.reduce((sum, each) => sum + each, 0);
+    report({
+      code: "W_TEMPLATE_OVERFLOW",
+      overflow: (values.gapFloor - arranged2.spaced.unit) * weight
+    });
+    return drawn(tuning2, arranged2.stacked, arranged2.spaced.tops);
+  }
+  let tuning = plainAt(fitted);
+  const orphans = [];
+  const main = arrange(tuning).stacked.text;
+  if (main !== void 0) {
+    const settled = settle2({
+      size: fitted,
+      measure,
+      limits,
+      layout: (setting) => {
+        const tried = { ...setting, extras: [] };
+        const arranged2 = arrange(tried);
+        return { text: arranged2.stacked.text ?? main, fits: arranged2.fits, laid: tried };
+      }
+    });
+    tuning = settled.laid;
+    if (settled.orphan !== void 0) orphans.push(settled.orphan);
+  }
+  for (const [index, extra] of arrange(tuning).stacked.extras.entries()) {
+    const settled = settle2({
+      size: extra.size,
+      measure,
+      limits: { shrink: 0, tracking: limits.tracking },
+      layout: (setting) => {
+        const spacing = [...tuning.extras];
+        spacing[index] = setting.letterSpacing;
+        const rebroken = [...tuning.extraRuns ?? []];
+        rebroken[index] = setting.runs;
+        const tried = { ...tuning, extras: spacing, extraRuns: rebroken };
+        const arranged2 = arrange(tried);
+        const read = arranged2.stacked.extras[index]?.text ?? extra.text;
+        return { text: read, fits: arranged2.fits, laid: tried };
+      }
+    });
+    tuning = settled.laid;
+    if (settled.orphan !== void 0) orphans.push(settled.orphan);
+  }
+  for (const word of orphans) reportOrphan(report, word);
+  const arranged = arrange(tuning);
+  return drawn(tuning, arranged.stacked, arranged.spaced.tops);
+}
+function roleOf(context, spec) {
+  const marked = (adjustments) => spec.roles.filter((role) => adjustments[role] === true);
+  const own2 = marked(context.adjustments);
+  const [first] = own2;
+  if (first !== void 0) return { role: first, ...own2.length > 1 ? { conflict: own2 } : {} };
+  const continuation = spec.continuation;
+  if (continuation === void 0 || context.adjustments[continuation.flag] !== true) {
+    return { role: spec.default };
+  }
+  const before = context.artworks?.slice(0, context.artwork.index).reverse() ?? [];
+  for (const { adjustments } of before) {
+    const [role] = marked(adjustments);
+    if (role !== void 0) {
+      return { role: continuation.carries.includes(role) ? role : spec.default };
+    }
+    if (adjustments[continuation.flag] !== true) return { role: spec.default };
+  }
+  return { role: spec.default };
+}
+var PICTURE_SHAPE_PARAMETERS = {
+  widest: {
+    kind: "ratio",
+    default: 3,
+    min: 0,
+    description: "The widest shape the picture may take, as width over height."
+  },
+  tallest: {
+    kind: "ratio",
+    default: 1,
+    min: 0,
+    description: "The tallest shape the picture may take, as width over height; a taller file is fitted whole."
+  },
+  fallback: {
+    kind: "ratio",
+    default: 2,
+    min: 0,
+    description: "The picture's shape, as width over height, when the file's size is unknown."
+  },
+  fit: {
+    kind: "choice",
+    default: "auto",
+    choices: ["auto", "cover", "contain"],
+    description: "How the file fills the picture: `auto` covers it when the picture took the file\u2019s own shape and fits it whole otherwise."
+  }
+};
+var BARE_PICTURE_PARAMETERS = PICTURE_SHAPE_PARAMETERS;
+function pictureSize(asset, width, cap, values) {
+  const natural = imageHeight(asset, width, width / values.fallback);
+  const capped = Math.min(natural, cap);
+  const clamped = Math.min(width / values.tallest, Math.max(width / values.widest, capped));
+  const fit = values.fit === "auto" ? clamped === natural ? "cover" : "contain" : values.fit;
+  return { size: { w: width, h: Math.round(clamped) }, fit };
+}
+function barePicture(asset, area, given = {}, options = {}) {
+  const values = parameterValues(BARE_PICTURE_PARAMETERS, given);
+  const { size, fit } = pictureSize(asset, area.width, area.height, values);
+  return sized(image({ name: options.name ?? "image", asset, size, fit }));
+}
+var FRAMED_PICTURE_PARAMETERS = {
+  ...PICTURE_SHAPE_PARAMETERS,
+  border: {
+    kind: "length",
+    default: 4,
+    min: 0,
+    description: "The border on the top, the right and the foot, in px."
+  },
+  side: {
+    kind: "length",
+    default: 29,
+    min: 0,
+    description: "The bar down the left side, border included, in px."
+  },
+  radius: {
+    kind: "length",
+    default: 32,
+    min: 0,
+    description: "The inside's two left corners, where it meets the bar, in px."
+  },
+  shadowX: { kind: "length", default: 17, description: "The shadow's offset to the right, in px." },
+  shadowY: { kind: "length", default: 47, description: "The shadow's offset down, in px." },
+  shadowBlur: {
+    kind: "length",
+    default: 12,
+    min: 0,
+    description: "The shadow's blur, a standard deviation in px."
+  },
+  shadowSpread: {
+    kind: "length",
+    default: -20,
+    description: "How much wider than the frame the shadow is on every side; below 0, narrower."
+  }
+};
+var SIGNATURE_LINE_PARAMETERS = {
+  size: { kind: "length", default: 24, min: 1, description: "The type size, in px." },
+  letterSpacing: {
+    kind: "length",
+    default: 0,
+    description: "Space added between letters, in px."
+  },
+  lineHeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0.5,
+    description: "The line's height, as a multiple of the size."
+  },
+  align: {
+    kind: "choice",
+    default: "center",
+    choices: ["left", "center", "right"],
+    description: "Where the line sits across its area."
+  }
+};
+function signatureLine(words, area, style2, given = {}, options = {}) {
+  const values = parameterValues(SIGNATURE_LINE_PARAMETERS, given);
+  return capText(plainRuns(words, { ...style2, size: values.size }), area, values, {
+    name: options.name ?? "signature",
+    ...options.metrics === void 0 ? {} : { metrics: options.metrics },
+    ...options.text === void 0 ? {} : { text: options.text }
+  });
 }
 function piecesOf2(button) {
   const boxless = button.style.trailing === void 0 ? button.trailing : void 0;
@@ -22791,13 +23425,33 @@ function buttonWidth(button) {
   return style2.padding.left + inner + style2.padding.right + trailing;
 }
 function buttonRow(buttons, options) {
+  const drawn = buttonRowIn(
+    { width: options.width ?? Infinity, height: Infinity },
+    buttons,
+    { gap: options.gap, ...options.arrange === void 0 ? {} : { arrange: options.arrange } },
+    { ...options.name === void 0 ? {} : { name: options.name } }
+  );
+  if (options.report !== void 0) reportOverflow(options.report, drawn.overflow, 0);
+  return { width: drawn.width, height: drawn.height, draft: drawn.draft };
+}
+var BUTTON_ROW_PARAMETERS = {
+  gap: { kind: "length", default: 0, description: "Between two buttons, at least, in px." },
+  arrange: {
+    kind: "choice",
+    default: "packed",
+    choices: ["packed", "justified"],
+    description: "With room to spare: centred at `gap` apart, or spread so the first and last touch its edges."
+  }
+};
+function buttonRowIn(area, buttons, given = {}, options = {}) {
+  const values = parameterValues(BUTTON_ROW_PARAMETERS, given);
   const widths = buttons.map(buttonWidth);
-  const natural = widths.reduce((sum, each) => sum + each, 0) + options.gap * Math.max(0, buttons.length - 1);
-  const room = options.width ?? natural;
-  if (options.report !== void 0) reportOverflow(options.report, natural, room);
+  const natural = widths.reduce((sum, each) => sum + each, 0) + values.gap * Math.max(0, buttons.length - 1);
+  const room = Number.isFinite(area.width) ? area.width : natural;
+  const overflow = natural - room > 0 ? natural - room : 0;
   const spare = Math.max(0, room - natural);
-  const justified = options.arrange === "justified" && buttons.length > 1;
-  const gap = justified ? options.gap + spare / (buttons.length - 1) : options.gap;
+  const justified = values.arrange === "justified" && buttons.length > 1;
+  const gap = justified ? values.gap + spare / (buttons.length - 1) : values.gap;
   const height = buttons.reduce((tallest, each) => Math.max(tallest, each.style.height), 0);
   let x = justified ? 0 : spare / 2;
   const children = buttons.map((button, index) => {
@@ -22806,11 +23460,10 @@ function buttonRow(buttons, options) {
     x += drawn.width + gap;
     return placed;
   });
-  return block(
-    Math.max(room, natural),
-    height,
-    group({ name: options.name ?? "buttons", children })
-  );
+  return {
+    ...block(Math.max(room, natural), height, group({ name: options.name ?? "buttons", children })),
+    overflow
+  };
 }
 function drawButton(button, width) {
   const { style: style2 } = button;
@@ -22861,8 +23514,78 @@ function drawButton(button, width) {
   return block(width, h, group({ name: button.name ?? "button", children }));
 }
 var NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
+function icon(shape2, height, color2, name) {
+  const drawn = iconIn(shape2, { width: Infinity, height }, color2, {}, { name });
+  return { width: drawn.width, height: drawn.height, draft: drawn.draft };
+}
+var ICON_PARAMETERS = {
+  height: {
+    kind: "length",
+    default: 24,
+    min: 0,
+    description: "The icon's height, in px; absent, the area's height when it has one."
+  }
+};
+function iconIn(shape2, area, color2, given = {}, options = {}) {
+  const values = parameterValues(ICON_PARAMETERS, given);
+  const height = given.height !== void 0 || !Number.isFinite(area.height) ? values.height : area.height;
+  const name = options.name ?? "icon";
+  const scale = height / shape2.box.h;
+  const paint = shape2.paint.kind === "fill" ? { fill: solid(color2) } : {
+    fill: NO_FILL,
+    stroke: {
+      paint: solid(color2),
+      width: shape2.paint.width,
+      align: "center"
+    }
+  };
+  const width = shape2.box.w * scale;
+  return {
+    ...block(
+      width,
+      height,
+      vector({
+        name,
+        geometry: { kind: "path", d: shape2.d, fillRule: shape2.fillRule ?? "nonzero" },
+        size: shape2.box,
+        ...paint,
+        transform: { scaleX: scale, scaleY: scale }
+      })
+    ),
+    overflow: Number.isFinite(area.width) ? Math.max(0, width - area.width) : 0
+  };
+}
+var ICON_IN_DISC_PARAMETERS = {
+  iconRatio: {
+    kind: "ratio",
+    default: 0.5,
+    min: 0,
+    max: 1,
+    description: "The icon's height as a share of the disc's diameter."
+  }
+};
+function iconInDisc(shape2, diameter, colors, given = {}, options = {}) {
+  const { iconRatio } = parameterValues(ICON_IN_DISC_PARAMETERS, given);
+  const glyph = icon(shape2, diameter * iconRatio, colors.icon, options.iconName ?? "icon");
+  return block(
+    diameter,
+    diameter,
+    group({
+      name: options.name ?? "icon-in-disc",
+      children: [
+        rect({
+          name: options.discName ?? "disc",
+          size: { w: diameter, h: diameter },
+          radius: diameter / 2,
+          fill: solid(colors.disc)
+        }),
+        at((diameter - glyph.width) / 2, (diameter - glyph.height) / 2, glyph)
+      ]
+    })
+  );
+}
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.1/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-KTMH3XT2.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-KTMH3XT2.js
 var PLACEHOLDER_LOGO = {
   box: { w: 186.09, h: 376.79 },
   d: (
@@ -22875,19 +23598,19 @@ var PLACEHOLDER_SIGNATURE = "@assinatura";
 function oneInk(ink) {
   return { primary: ink, secondary: ink };
 }
-function drawBrandMark(shape, height, inks, name) {
-  if (!isTonedMark(shape)) return mark(shape, height, inks.primary, name);
-  const scale = height / shape.box.h;
+function drawBrandMark(shape2, height, inks, name) {
+  if (!isTonedMark(shape2)) return mark(shape2, height, inks.primary, name);
+  const scale = height / shape2.box.h;
   return block(
-    shape.box.w * scale,
+    shape2.box.w * scale,
     height,
     group({
       name,
-      children: shape.layers.map(
+      children: shape2.layers.map(
         (layer) => vector({
           name: `${name}-${layer.tone}`,
           geometry: { kind: "path", d: layer.d, fillRule: layer.fillRule },
-          size: shape.box,
+          size: shape2.box,
           fill: solid(inks[layer.tone]),
           transform: { scaleX: scale, scaleY: scale }
         })
@@ -22902,7 +23625,7 @@ function signatureOf(kit) {
   return kit.signature ?? PLACEHOLDER_SIGNATURE;
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.1/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
 var TITLE_INK = "#7c7c7c";
 var ROW_INK = "#393939";
 var FACE = systemFont("CircularXX");
@@ -22979,7 +23702,11 @@ var COLOR_DEFAULTS = {
   ink: "#4d4d4d",
   /** The words on a band. */
   "on-accent": "#ebeae9",
-  /** A `**highlight**` in the question. */
+  /**
+   * The highlight: `**…**` and a `{cor:destaque}…{/}` span in the question and the title.
+   */
+  destaque: "#ae7d2e",
+  /** The highlight's old name, kept so a configuration that writes it draws as it did. */
   "highlight-color": "#ae7d2e",
   /** The logo, over the background. */
   logo: "#ebeae9"
@@ -23016,15 +23743,10 @@ var SEMIBOLD = 600;
 var EXTRABOLD = 800;
 var TITLE_TRACKING = -0.027;
 var METRICS = {
-  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
-  Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
-  CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 }
+  Newsreader: { ascent: 0.735, descent: 0.265, capHeight: 0.67 },
+  Roboto: { ascent: 0.928, descent: 0.244, capHeight: 0.711 },
+  CircularXX: { ascent: 0.75, descent: 0.25, capHeight: 0.709 }
 };
-var NO_FILL2 = solid({ r: 0, g: 0, b: 0, a: 0 });
-function capOffset(family, size, lineHeight) {
-  const m = METRICS[family];
-  return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
-}
 var ESTIMATED_ADVANCE = 0.5;
 var SLIDE = { w: 1080, h: 1350 };
 var LOGO = { x: 109, y: 65, height: 70 };
@@ -23034,6 +23756,47 @@ var CARD = {
   radius: 30,
   /** From the tabs' top to the sheet's top. */
   tabs: 69.6
+};
+var FRONT_TAB = {
+  x: 119,
+  y: 0,
+  shape: {
+    box: { w: 542.1, h: 104.3 },
+    d: "M542.1 69.6V104.3H0V69.6H34.4C47.6 69.6 58.4 58.9 58.4 45.6V24C58.4 10.8 69.1 0 82.4 0H459.7C472.9 0 483.7 10.8 483.7 24V45.6C483.7 58.9 494.4 69.6 507.6 69.6Z",
+    paint: { kind: "fill" }
+  }
+};
+var BACK_TAB = {
+  x: 553,
+  y: 0,
+  shape: {
+    box: { w: 318, h: 104.3 },
+    d: "M318 69.6V104.3H0.9V69.6H35.3C48.6 69.6 59.3 58.9 59.3 45.6V24C59.3 10.8 70 0 83.3 0H235.6C248.8 0 259.6 10.8 259.6 24V45.6C259.6 58.9 270.3 69.6 283.5 69.6Z",
+    paint: { kind: "fill" }
+  }
+};
+var ARROW_ON = {
+  x: 644,
+  y: 25,
+  shape: {
+    box: { w: 137, h: 26 },
+    d: "M136.2 12.9L120.5 0.1V9.2H0V16.6H120.5V25.8Z",
+    paint: { kind: "fill" }
+  }
+};
+var ARROW_DOWN = {
+  x: 690,
+  y: 20,
+  shape: {
+    box: { w: 37, h: 37 },
+    d: "M0 0H28V20H37L22 37L7 20H16V8H0Z",
+    paint: { kind: "fill" }
+  }
+};
+var HEART = {
+  box: { w: 192, h: 192 },
+  d: "M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46C135 46 150 58 150 78C150 112 96 150 96 150Z",
+  paint: { kind: "fill" }
 };
 var INNER = {
   bandX: 109,
@@ -23047,10 +23810,6 @@ var INNER = {
    */
   questionW: 762
 };
-var FRONT_TAB = "M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z";
-var BACK_TAB = "M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z";
-var ARROW_ON = "M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z";
-var ARROW_DOWN = "M690 20H718V40H727L712 57L697 40H706V28H690Z";
 var SIGNATURE2 = { x: 215, capTop: 22, size: 30 };
 var SHADOW = { y: 7, blur: 71, alpha: 0.2, grey: 49 };
 var TITLE3 = {
@@ -23102,16 +23861,17 @@ var BACK = {
   bottom: 80
 };
 var SIZE_DRIFT_WEIGHT = 0.1;
-function roleOf(context) {
-  return context.adjustments["contracapa"] === true ? "contracapa" : "ruling";
-}
+var ROLES = {
+  roles: ["contracapa"],
+  default: "ruling"
+};
 var build = (context) => {
   const ink = (name) => colorValue(context, name, COLOR_DEFAULTS[name]);
   const number4 = (name) => numberValue(context, name, NUMBER_DEFAULTS[name]);
   const written = context.slots["fundo"]?.value;
   const background = written?.kind === "image" ? written.asset : imageValue(context, "background");
   const paper = imageValue(context, "paper-texture");
-  const sheet = roleOf(context) === "contracapa" ? backCover(context, ink) : ruling(context, ink, number4);
+  const sheet = roleOf(context, ROLES).role === "contracapa" ? backCover(context, ink) : ruling(context, ink, number4);
   const height = CARD.tabs + sheet.height;
   const top = Math.round((SLIDE.h - height) / 2);
   const limit = number4("card-max-height");
@@ -23122,10 +23882,25 @@ var build = (context) => {
     idPrefix: context.idPrefix,
     background: solid("#e2e1e1"),
     children: [
-      ...background === void 0 ? [] : [image({ name: "fundo", asset: background, size: context.size, fit: "cover" })],
+      ...background === void 0 ? [] : [
+        barePicture(
+          background,
+          { width: context.size.w, height: context.size.h },
+          // Held to the slide's own shape, so the picture is the slide's size whatever
+          // the file's.
+          {
+            fit: "cover",
+            widest: context.size.w / context.size.h,
+            tallest: context.size.w / context.size.h
+          },
+          { name: "fundo" }
+        ).draft
+      ],
       at(LOGO.x, LOGO.y, drawLogo(context.brand, LOGO.height, oneInk(ink("logo")))),
       card(context, ink, top, sheet),
       ...paper === void 0 ? [] : [
+        // The kit's `barePicture` takes no blend mode (TYTO-910); until it does, the paper
+        // is the one image this template draws with the core's node.
         image({
           name: "papel",
           asset: paper,
@@ -23138,12 +23913,7 @@ var build = (context) => {
   });
 };
 function card(context, ink, top, sheet) {
-  const tab = (name, d, color2) => vector({
-    name,
-    geometry: { kind: "path", d, fillRule: "nonzero" },
-    size: { w: SLIDE.w, h: CARD.tabs + 35 },
-    fill: solid(color2)
-  });
+  const drawn = (name, piece, color2) => at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color2, name));
   return group({
     name: "cartao",
     transform: { x: 0, y: top },
@@ -23158,58 +23928,82 @@ function card(context, ink, top, sheet) {
       }
     ],
     children: [
-      tab("aba-tras", BACK_TAB, ink("back-tab")),
-      vector({
-        name: "seta",
-        geometry: { kind: "path", d: sheet.arrow, fillRule: "nonzero" },
-        size: { w: SLIDE.w, h: CARD.tabs },
-        fill: solid(ink("ink"))
-      }),
-      tab("aba-frente", FRONT_TAB, ink("card")),
-      plainText("assinatura", signatureOf(context.brand), {
-        family: "Roboto",
-        font: SANS,
-        x: SIGNATURE2.x,
-        capTop: SIGNATURE2.capTop,
-        size: SIGNATURE2.size,
-        weight: LIGHT,
-        color: ink("ink")
-      }),
-      rect({
-        name: "folha",
-        size: { w: CARD.w, h: sheet.height },
-        radius: CARD.radius,
-        fill: solid(ink("card")),
-        transform: { x: CARD.x, y: CARD.tabs }
-      }),
+      drawn("aba-tras", BACK_TAB, ink("back-tab")),
+      drawn("seta", sheet.arrow, ink("ink")),
+      drawn("aba-frente", FRONT_TAB, ink("card")),
+      signature(context, ink),
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink("card")),
+          { kind: "rounded", radius: CARD.radius },
+          { name: "folha" }
+        )
+      ),
       group({ name: "conteudo", transform: { y: CARD.tabs }, children: sheet.children })
     ]
   });
 }
-function stack(sections, top) {
-  const nodes = [];
-  let y = top;
-  for (const [index, section] of sections.entries()) {
-    if (index > 0) y += section.gap;
-    nodes.push(...section.draw(y));
-    y += section.height;
-  }
-  return { nodes, bottom: y };
+function signature(context, ink) {
+  const line = signatureLine(
+    signatureOf(context.brand),
+    { width: Infinity, height: Infinity },
+    { font: SANS, weight: LIGHT, color: ink("ink") },
+    { size: SIGNATURE2.size, lineHeight: 1.2, align: "left" },
+    { name: "assinatura", metrics: METRICS.Roboto }
+  );
+  return at(SIGNATURE2.x, SIGNATURE2.capTop - anchorOf(line).capTop, line);
+}
+function across(dx, item) {
+  return { ...item, draft: at(dx, 0, item) };
+}
+function stacked(sections, top) {
+  const column = stackIn({ width: CARD.w, height: Infinity }, sections, {
+    measureFrom: "capitals"
+  });
+  const { capTop, baseline } = anchorOf(column);
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 function textSection(context, name, runs, written, style2, gap, tuning) {
-  const drawnRuns = tuning?.runs ?? runs;
-  const spacing = tuning === void 0 ? {} : { spacing: tuning.letterSpacing };
-  const place = (capTop) => richText(name, drawnRuns, { ...style2, ...spacing, capTop });
-  const count = measuredLines(context, place(0), written, style2.size, style2.width);
-  const height = (count - 1) * style2.size * style2.lineHeight + style2.size * METRICS[style2.family].cap;
-  return { gap, height, draw: (top) => [place(top)], text: place(0) };
+  const set2 = capText(
+    nonEmpty(tuning?.runs ?? runs, style2.size),
+    { width: style2.width, height: Infinity },
+    {
+      size: style2.size,
+      lineHeight: style2.lineHeight,
+      letterSpacing: tuning?.letterSpacing ?? (style2.tracking ?? 0) * style2.size,
+      align: style2.align ?? "left"
+    },
+    {
+      name,
+      metrics: METRICS[style2.family],
+      measure: measuredOr(context, written, style2.size, style2.width)
+    }
+  );
+  return {
+    item: across(style2.x - CARD.x, set2),
+    gapAbove: gap,
+    ...set2.draft.kind === "text" ? { text: set2.draft } : {}
+  };
+}
+function nonEmpty(runs, size) {
+  const [head, ...tail] = runs;
+  return [head ?? run("", { font: SANS, size, weight: REGULAR, color: "#000000" }), ...tail];
 }
 function bandSection(ink, name, inner, padding, edge, gap) {
-  const height = padding.top + inner.height + padding.bottom;
+  const { capTop, baseline } = anchorOf(inner.item);
+  const height = padding.top + (baseline - capTop) + padding.bottom;
   return {
-    gap,
-    height,
-    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)]
+    item: block(
+      CARD.w,
+      height,
+      group({
+        children: [...band(ink, name, height, edge), at(0, padding.top - capTop, inner.item)]
+      })
+    ),
+    gapAbove: gap
   };
 }
 function runsOfLines(written, style2, options) {
@@ -23218,10 +24012,7 @@ function runsOfLines(written, style2, options) {
     ...runsOf(line, style2, options)
   ]);
 }
-function upper(item) {
-  return item.kind === "text" ? { ...item, text: item.text.toUpperCase() } : item;
-}
-function titleSections(context, ink, written, align) {
+function titleSections(context, ink, written, align, highlighted) {
   if (written.length === 0) return [];
   const x = align === "left" ? INNER.textX : CARD.x;
   const width = align === "left" ? INNER.textW : CARD.w;
@@ -23245,14 +24036,19 @@ function titleSections(context, ink, written, align) {
   const main = rest.length > 0 ? rest : [...written];
   const sections = [];
   if (kicker.length > 0) {
-    const runs2 = runsOfLines(kicker, runStyle(TITLE3.kickerSize)).map(upper);
+    const runs2 = runsOfLines(kicker, runStyle(TITLE3.kickerSize), highlighted?.title.options).map(
+      inCapitals
+    );
     sections.push(textSection(context, "chapeu", runs2, kicker, textStyle(TITLE3.kickerSize), 0));
   }
-  const runs = runsOfLines(main, runStyle(TITLE3.size)).map(upper);
+  const runs = runsOfLines(main, runStyle(TITLE3.size), highlighted?.title.options).map(inCapitals);
   sections.push(
     textSection(context, "titulo", runs, main, textStyle(TITLE3.size), TITLE3.kickerToTitle)
   );
   return sections;
+}
+function inCapitals(item) {
+  return item.kind === "text" ? { ...item, text: item.text.toLocaleUpperCase("pt-BR") } : item;
 }
 function titleLines(context) {
   return fieldOf(context, "titulo") ?? DEFAULT_TITLE.map(richLine);
@@ -23262,22 +24058,28 @@ function withoutNumber(written) {
   if (last === void 0) return [];
   return [...written.slice(0, -1), richLine(plain(last).replace(/\s+\d[\d.]*$/u, ""))];
 }
-function band(ink, name, y, height, edge) {
+function band(ink, name, height, edge) {
   const radius = 6;
   return [
-    rect({
-      name,
-      size: { w: INNER.bandW, h: height },
-      radius,
-      fill: solid(ink("accent-edge")),
-      transform: { x: INNER.bandX, y }
-    }),
+    at(
+      INNER.bandX - CARD.x,
+      0,
+      shape(
+        { w: INNER.bandW, h: height },
+        solid(ink("accent-edge")),
+        { kind: "rounded", radius },
+        { name }
+      )
+    ),
+    // The body rounds two corners only, which the kit's `shape` does not draw, and its `icon`
+    // from a path set the edges differently (measured, TYTO-894); until the kit draws it
+    // (TYTO-909), this is the one core `rect` the template draws.
     rect({
       name: `${name}-corpo`,
       size: edge === "side" ? { w: INNER.bandW - INNER.edge, h: height } : { w: INNER.bandW, h: height - RULING.answerEdge },
       radius: edge === "side" ? [0, radius, radius, 0] : [0, 0, radius, radius],
       fill: solid(ink("accent")),
-      transform: edge === "side" ? { x: INNER.bandX + INNER.edge, y } : { x: INNER.bandX, y: y + RULING.answerEdge }
+      transform: edge === "side" ? { x: INNER.bandX - CARD.x + INNER.edge, y: 0 } : { x: INNER.bandX - CARD.x, y: RULING.answerEdge }
     })
   ];
 }
@@ -23294,15 +24096,6 @@ function ruling(context, ink, number4) {
   const limit = number4("card-max-height") - CARD.tabs;
   const questionSize = number4("question-size");
   const answerSize = number4("answer-size");
-  const floorStep = Math.max(
-    0,
-    Math.ceil(
-      Math.max(
-        questionSize - number4("question-floor"),
-        (answerSize - number4("answer-floor")) * questionSize / answerSize
-      )
-    )
-  );
   const smallest = Math.min(questionSize, number4("question-min"));
   const largest = Math.max(questionSize, number4("question-ceiling"));
   const candidates = [];
@@ -23345,43 +24138,59 @@ function ruling(context, ink, number4) {
       answerGrown = size;
     }
   }
-  let sizes = { question: grown, answer: answerGrown };
-  let laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize); step += 1) {
-    const question = Math.max(number4("question-floor"), grown - step);
-    const answer = Math.max(number4("answer-floor"), answerGrown * Math.min(1, question / grown));
-    sizes = { question, answer };
-    laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  }
-  const fitsAtSize = laid.height <= limit;
-  const tracking = number4("orphan-tracking");
-  let tunings = /* @__PURE__ */ new Map();
-  for (const [name, size] of [
-    ["pergunta", sizes.question],
-    ["resposta", sizes.answer],
-    ["fonte", RULING.sourceSize]
-  ]) {
-    if (laid.texts?.get(name) === void 0) continue;
-    const settled = settle2({
-      size,
+  const answerFloor = number4("answer-floor");
+  const sizesAt = (question) => ({
+    question,
+    answer: Math.max(answerFloor, answerGrown * Math.min(1, question / grown))
+  });
+  const extraNames = ["resposta", "fonte"];
+  const tuningsOf = (tuning) => {
+    const tunings = /* @__PURE__ */ new Map();
+    const add = (name, letterSpacing, runs) => tunings.set(name, { letterSpacing, ...runs === void 0 ? {} : { runs } });
+    add("pergunta", tuning.letterSpacing, tuning.runs);
+    const present2 = extraNames.filter((name) => parts[partOf[name]] !== void 0);
+    for (const [index, name] of present2.entries()) {
+      add(name, tuning.extras[index] ?? 0, tuning.extraRuns?.[index]);
+    }
+    return tunings;
+  };
+  const sheetAt = (tuning) => layRuling(context, ink, parts, sizesAt(tuning.size), tuningsOf(tuning));
+  const fitted = fittedColumn(
+    (tuning) => {
+      const sheet = sheetAt(tuning);
+      const sizes = sizesAt(tuning.size);
+      const question = sheet.texts?.get("pergunta");
+      const extras = [
+        { text: sheet.texts?.get("resposta"), size: sizes.answer },
+        { text: sheet.texts?.get("fonte"), size: RULING.sourceSize }
+      ].flatMap(({ text: text2, size }) => text2 === void 0 ? [] : [{ text: text2, size }]);
+      return {
+        pieces: [{ height: sheet.height, place: () => [...sheet.children] }],
+        weights: [0, 1],
+        ...question === void 0 ? {} : { text: question },
+        extras
+      };
+    },
+    { width: CARD.w, top: 0, bottom: limit + 1 },
+    {
+      ceiling: grown,
+      floor: number4("question-floor"),
+      step: 1,
+      floorLast: "always",
+      gapFloor: 1,
+      orphanShrink: 0,
+      orphanTracking: number4("orphan-tracking")
+    },
+    {
       measure: context.measure,
-      limits: { shrink: 0, tracking },
-      layout: (setting) => {
-        const tried = new Map(tunings);
-        tried.set(name, {
-          letterSpacing: setting.letterSpacing,
-          ...setting.runs === void 0 ? {} : { runs: setting.runs }
-        });
-        const sheet = layRuling(context, ink, parts, sizes, tried);
-        const text2 = sheet.texts?.get(name) ?? laid.texts.get(name);
-        return { text: text2, fits: !fitsAtSize || sheet.height <= limit, laid: tried };
+      report: (diagnostic2) => {
+        if (diagnostic2.code !== "W_TEMPLATE_OVERFLOW") context.report(diagnostic2);
       }
-    });
-    tunings = settled.laid;
-    reportOrphan(context.report, settled.orphan);
-  }
-  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
+    }
+  );
+  return sheetAt(fitted.tuning);
 }
+var partOf = { resposta: "answer", fonte: "source" };
 function present(written) {
   return written !== void 0 && written.length > 0;
 }
@@ -23389,7 +24198,10 @@ function layRuling(context, ink, parts, sizes, tunings) {
   const questionSize = sizes.question;
   const answerSize = sizes.answer;
   const texts = /* @__PURE__ */ new Map();
-  const sections = [...titleSections(context, ink, titleLines(context), "left")];
+  const highlighted = highlightsOf(ink);
+  const sections = [
+    ...titleSections(context, ink, titleLines(context), "left", highlighted)
+  ];
   if (present(parts.subject)) {
     const runs = runsOfLines(parts.subject, {
       font: SANS,
@@ -23417,8 +24229,8 @@ function layRuling(context, ink, parts, sizes, tunings) {
     const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink("ink") },
-      { bold: MEDIUM }
-    ).map((item) => italic(item, ink("highlight-color")));
+      highlighted.question.options
+    ).map(italic);
     const section = textSection(
       context,
       "pergunta",
@@ -23441,7 +24253,7 @@ function layRuling(context, ink, parts, sizes, tunings) {
     const runs = runsOfLines(
       parts.answer,
       { font: SANS, size: answerSize, weight: LIGHT, color: ink("on-accent") },
-      { bold: MEDIUM }
+      highlighted.answer.options
     );
     const inner = textSection(
       context,
@@ -23488,13 +24300,33 @@ function layRuling(context, ink, parts, sizes, tunings) {
     if (section.text !== void 0) texts.set("fonte", section.text);
     sections.push(section);
   }
-  const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
+  const { node: node2, bottom } = stacked(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node2], texts };
 }
-function italic(item, highlight) {
-  if (item.kind !== "text") return item;
-  const bold = item.weight > REGULAR;
-  return { ...item, style: "italic", ...bold ? { color: solid(highlight) } : {} };
+function italic(item) {
+  return item.kind === "text" ? { ...item, style: "italic" } : item;
+}
+var COLOR_MARK = "cor";
+function highlightColor(ink) {
+  const named = ink("destaque");
+  if (named !== COLOR_DEFAULTS.destaque) return named;
+  const old = ink("highlight-color");
+  return old !== COLOR_DEFAULTS["highlight-color"] ? old : named;
+}
+function highlightsOf(ink) {
+  const color2 = highlightColor(ink);
+  const painted = { destaque: { color: color2 } };
+  return {
+    question: highlights({
+      bold: { weight: MEDIUM, color: color2 },
+      marks: { [COLOR_MARK]: { like: "bold", values: painted } }
+    }),
+    title: highlights({
+      bold: { weight: EXTRABOLD, color: color2 },
+      marks: { [COLOR_MARK]: { like: "plain", values: painted } }
+    }),
+    answer: highlights({ bold: { weight: MEDIUM } })
+  };
 }
 function backCover(context, ink) {
   const call = fieldOf(context, "chamada") ?? [richLine(DEFAULT_CALL)];
@@ -23552,53 +24384,41 @@ function backCover(context, ink) {
       )
     );
   }
-  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
-  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
-  const { nodes, bottom } = stack(sections, BACK.top);
-  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
+  sections.push({ item: heart(ink), gapAbove: BACK.heartGap });
+  sections.push({ item: icons(ink), gapAbove: BACK.iconsGap });
+  const { node: node2, bottom } = stacked(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: [node2] };
 }
-function heart(ink, y) {
+function heart(ink) {
   const { x, d } = BACK.heart;
-  const shape = "M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46C135 46 150 58 150 78C150 112 96 150 96 150Z";
-  return [
-    rect({
-      name: "coracao-fundo",
-      size: { w: d, h: d },
-      radius: d / 2,
-      fill: solid(ink("accent")),
-      transform: { x, y }
-    }),
-    vector({
-      name: "coracao",
-      geometry: { kind: "path", d: shape, fillRule: "nonzero" },
-      size: { w: d, h: d },
-      fill: solid(ink("card")),
-      transform: { x, y }
-    })
-  ];
+  return block(
+    CARD.w,
+    d,
+    at(
+      x - CARD.x,
+      0,
+      iconInDisc(
+        HEART,
+        d,
+        { disc: ink("accent"), icon: ink("card") },
+        { iconRatio: 1 },
+        { name: "coracao-disco", discName: "coracao-fundo", iconName: "coracao" }
+      )
+    )
+  );
 }
-function icons(ink, y) {
+function icons(ink) {
   const { x } = BACK.icons;
-  const stroke = { paint: solid(ink("ink")), width: 4, align: "center" };
+  const outlined = { kind: "stroke", width: 4 };
   const ROW = 48;
   const GAP = 18;
   const glyph = (name, d, size, width, down) => {
     const box = typeof size === "number" ? { w: size, h: size } : size;
+    const outline = { box, d, paint: outlined };
     return {
       name: `${name}-botao`,
       style: { height: ROW, radius: 0, padding: { left: 0, right: 0 }, gap: 0 },
-      leading: block(
-        width,
-        ROW,
-        vector({
-          name,
-          geometry: { kind: "path", d, fillRule: "nonzero" },
-          size: box,
-          stroke,
-          fill: NO_FILL2,
-          transform: { x: 0, y: down }
-        })
-      )
+      leading: block(width, ROW, at(0, down, icon(outline, box.h, ink("ink"), name)))
     };
   };
   const row = buttonRow(
@@ -23615,7 +24435,7 @@ function icons(ink, y) {
     ],
     { gap: GAP, name: "icones" }
   );
-  return [at(x, y, row)];
+  return block(CARD.w, BACK.iconsHeight, at(x - CARD.x, 0, row));
 }
 function unfilledOf(context, node2) {
   const box = node2.box?.w;
@@ -23645,40 +24465,15 @@ function fieldOf(context, name) {
 function richLine(words) {
   return [{ kind: "text", value: words, range: { start: 0, end: words.length } }];
 }
-function plainText(name, words, placed) {
-  const style2 = {
-    font: placed.font,
-    size: placed.size,
-    weight: placed.weight,
-    color: placed.color
+function measuredOr(context, written, size, width) {
+  return (node2) => {
+    const measured = context.measure(node2);
+    if (measured !== void 0) return { ...measured, lines: Math.max(1, measured.lines) };
+    const lines2 = estimated(written, size, width);
+    return { runs: node2.runs, lines: lines2, width, height: 0, scale: 1, overflow: 0 };
   };
-  const [first = "", ...others] = words.split("\n");
-  return richText(
-    name,
-    [run(first, style2), ...others.flatMap((line) => [lineBreak(), run(line, style2)])],
-    placed
-  );
 }
-function richText(name, runs, placed) {
-  const lineHeight = placed.lineHeight ?? 1.2;
-  const [head, ...tail] = runs;
-  const empty = run("", { font: SANS, size: placed.size, weight: REGULAR, color: "#000000" });
-  return text({
-    name,
-    runs: [head ?? empty, ...tail],
-    ...placed.width === void 0 ? {} : { box: { w: placed.width } },
-    align: placed.align ?? "left",
-    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
-    lineHeight,
-    transform: {
-      x: placed.x,
-      y: placed.capTop - capOffset(placed.family, placed.size, lineHeight)
-    }
-  });
-}
-function measuredLines(context, node2, written, size, width) {
-  const measured = context.measure(node2);
-  if (measured !== void 0) return Math.max(1, measured.lines);
+function estimated(written, size, width) {
   const perLine = Math.max(1, Math.floor(width / (size * ESTIMATED_ADVANCE)));
   const count = written.reduce(
     (sum, line) => sum + Math.max(1, Math.ceil([...plain(line)].length / perLine)),

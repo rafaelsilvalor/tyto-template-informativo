@@ -50,25 +50,40 @@ import {
   run,
   runsOf,
   solid,
-  text,
-  vector,
 } from '@tyto/core/template';
 import { drawLogo, oneInk, signatureOf } from '@tyto/house-style';
 import {
   KEEP_TOGETHER_RULES,
   ORPHAN_LIMITS,
+  anchorOf,
   at,
+  barePicture,
   block,
   buttonRow,
+  capText,
+  fittedColumn,
+  highlights,
+  icon,
+  iconInDisc,
   keepTogether,
   lines,
   plain,
-  reportOrphan,
   reportOverflow,
-  settle,
+  roleOf,
+  shape,
+  signatureLine,
+  stackIn,
 } from '@tyto/template-kit';
 
-import type { KeepTogetherRule } from '@tyto/template-kit';
+import type {
+  Block,
+  ColumnStack,
+  ColumnTuning,
+  FontMetrics,
+  Icon,
+  KeepTogetherRule,
+  RoleSpec,
+} from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -114,7 +129,11 @@ export const COLOR_DEFAULTS = {
   ink: '#4d4d4d',
   /** The words on a band. */
   'on-accent': '#ebeae9',
-  /** A `**highlight**` in the question. */
+  /**
+   * The highlight: `**…**` and a `{cor:destaque}…{/}` span in the question and the title.
+   */
+  destaque: '#ae7d2e',
+  /** The highlight's old name, kept so a configuration that writes it draws as it did. */
   'highlight-color': '#ae7d2e',
   /** The logo, over the background. */
   logo: '#ebeae9',
@@ -168,27 +187,18 @@ const EXTRABOLD = 800;
  */
 const TITLE_TRACKING = -0.027;
 
+type Family = 'Newsreader' | 'Roboto' | 'CircularXX';
+
 /**
- * Where the capitals start under a line's top, per family, as the fraction of the size the
- * browser puts above them: half the leading's excess over ascent plus descent, then ascent less
- * the cap height, in the metrics the browser uses: OS/2 typo where the font sets USE_TYPO_METRICS
- * (CircularXX, Newsreader), hhea where it does not (Roboto), read from the files themselves.
+ * Each family's metrics, as the kit's `capText` places a text by its capitals: in the metrics the
+ * browser uses, OS/2 typo where the font sets USE_TYPO_METRICS (CircularXX, Newsreader), hhea
+ * where it does not (Roboto), read from the files themselves.
  */
-const METRICS = {
-  Newsreader: { ascent: 0.735, descent: 0.265, cap: 0.67 },
-  Roboto: { ascent: 0.928, descent: 0.244, cap: 0.711 },
-  CircularXX: { ascent: 0.75, descent: 0.25, cap: 0.709 },
-} as const;
-
-type Family = keyof typeof METRICS;
-
-/** A shape drawn by its outline only. */
-const NO_FILL = solid({ r: 0, g: 0, b: 0, a: 0 });
-
-function capOffset(family: Family, size: number, lineHeight: number): number {
-  const m = METRICS[family];
-  return size * ((lineHeight - (m.ascent + m.descent)) / 2 + (m.ascent - m.cap));
-}
+const METRICS: Readonly<Record<Family, FontMetrics>> = {
+  Newsreader: { ascent: 0.735, descent: 0.265, capHeight: 0.67 },
+  Roboto: { ascent: 0.928, descent: 0.244, capHeight: 0.711 },
+  CircularXX: { ascent: 0.75, descent: 0.25, capHeight: 0.709 },
+};
 
 /** A glyph's advance, in em, for when nothing can be measured (a test, CI without the face). */
 const ESTIMATED_ADVANCE = 0.5;
@@ -209,6 +219,75 @@ const CARD = {
   tabs: 69.6,
 } as const;
 
+/**
+ * A shape of the reference's, held as data: its outline in a box of its own, and where that box
+ * stands on the card, in the slide's x and in y from the tabs' top. The box starts on a whole
+ * pixel, so the outline is drawn where the reference draws it.
+ */
+interface Piece {
+  readonly x: number;
+  readonly y: number;
+  readonly shape: Icon;
+}
+
+/** The tabs (the reference's shapes); each runs 34.7 px under the sheet, so no seam shows. */
+const FRONT_TAB: Piece = {
+  x: 119,
+  y: 0,
+  shape: {
+    box: { w: 542.1, h: 104.3 },
+    d:
+      'M542.1 69.6V104.3H0V69.6H34.4C47.6 69.6 58.4 58.9 58.4 45.6V24C58.4 10.8 69.1 0 82.4 0' +
+      'H459.7C472.9 0 483.7 10.8 483.7 24V45.6C483.7 58.9 494.4 69.6 507.6 69.6Z',
+    paint: { kind: 'fill' },
+  },
+};
+const BACK_TAB: Piece = {
+  x: 553,
+  y: 0,
+  shape: {
+    box: { w: 318, h: 104.3 },
+    d:
+      'M318 69.6V104.3H0.9V69.6H35.3C48.6 69.6 59.3 58.9 59.3 45.6V24C59.3 10.8 70 0 83.3 0' +
+      'H235.6C248.8 0 259.6 10.8 259.6 24V45.6C259.6 58.9 270.3 69.6 283.5 69.6Z',
+    paint: { kind: 'fill' },
+  },
+};
+
+/**
+ * The ruling's arrow on the back tab: on to the next slide. The reference's own outline, not
+ * the kit's `arrowShape`: its head is centred 0.05 px under its shaft (37.95 against 37.9), and
+ * a symmetric arrow would move it.
+ */
+const ARROW_ON: Piece = {
+  x: 644,
+  y: 25,
+  shape: {
+    box: { w: 137, h: 26 },
+    d: 'M136.2 12.9L120.5 0.1V9.2H0V16.6H120.5V25.8Z',
+    paint: { kind: 'fill' },
+  },
+};
+/** The back cover's arrow: down, to the comments. */
+const ARROW_DOWN: Piece = {
+  x: 690,
+  y: 20,
+  shape: {
+    box: { w: 37, h: 37 },
+    d: 'M0 0H28V20H37L22 37L7 20H16V8H0Z',
+    paint: { kind: 'fill' },
+  },
+};
+
+/** The back cover's heart, filled, in its disc's own box. */
+const HEART: Icon = {
+  box: { w: 192, h: 192 },
+  d:
+    'M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46' +
+    'C135 46 150 58 150 78C150 112 96 150 96 150Z',
+  paint: { kind: 'fill' },
+};
+
 /** Inside the sheet, every left edge and width the reference uses. */
 const INNER = {
   bandX: 109,
@@ -222,19 +301,6 @@ const INNER = {
    */
   questionW: 762,
 } as const;
-
-/** The tabs, as paths in the slide's x and in y from their top (the reference's shapes). */
-const FRONT_TAB =
-  'M661.1 69.6V104.3H119V69.6H153.4C166.6 69.6 177.4 58.9 177.4 45.6V24C177.4 10.8 188.1 0 201.4 0' +
-  'H578.7C591.9 0 602.7 10.8 602.7 24V45.6C602.7 58.9 613.4 69.6 626.6 69.6Z';
-const BACK_TAB =
-  'M871 69.6V104.3H553.9V69.6H588.3C601.6 69.6 612.3 58.9 612.3 45.6V24C612.3 10.8 623 0 636.3 0' +
-  'H788.6C801.8 0 812.6 10.8 812.6 24V45.6C812.6 58.9 823.3 69.6 836.5 69.6Z';
-
-/** The ruling's arrow on the back tab: on to the next slide. */
-const ARROW_ON = 'M780.2 37.9L764.5 25.1V34.2H644V41.6H764.5V50.8Z';
-/** The back cover's arrow: down, to the comments. */
-const ARROW_DOWN = 'M690 20H718V40H727L712 57L697 40H706V28H690Z';
 
 /** The signature on the front tab: Light 30 px, its capitals 22 px under the tabs' top. */
 const SIGNATURE = { x: 215, capTop: 22, size: 30 } as const;
@@ -311,12 +377,11 @@ const SIZE_DRIFT_WEIGHT = 0.1;
 
 /* --------------------------------------------------------------------------- the build -- */
 
-export type Role = 'ruling' | 'contracapa';
-
-/** Which slide this `::lamina` is: the brief marks the back cover. */
-export function roleOf(context: TemplateContext): Role {
-  return context.adjustments['contracapa'] === true ? 'contracapa' : 'ruling';
-}
+/** Which slide a `::lamina` is: the brief marks the back cover; any other slide is a ruling. */
+export const ROLES = {
+  roles: ['contracapa'],
+  default: 'ruling',
+} as const satisfies RoleSpec<'contracapa', 'ruling'>;
 
 export const build: TemplateBuild = (context: TemplateContext) => {
   const ink = (name: ColorName): string => colorValue(context, name, COLOR_DEFAULTS[name]);
@@ -329,7 +394,9 @@ export const build: TemplateBuild = (context: TemplateContext) => {
   const paper = imageValue(context, 'paper-texture');
 
   const sheet =
-    roleOf(context) === 'contracapa' ? backCover(context, ink) : ruling(context, ink, number);
+    roleOf(context, ROLES).role === 'contracapa'
+      ? backCover(context, ink)
+      : ruling(context, ink, number);
   const height = CARD.tabs + sheet.height;
   const top = Math.round((SLIDE.h - height) / 2);
   const limit = number('card-max-height');
@@ -343,12 +410,27 @@ export const build: TemplateBuild = (context: TemplateContext) => {
     children: [
       ...(background === undefined
         ? []
-        : [image({ name: 'fundo', asset: background, size: context.size, fit: 'cover' })]),
+        : [
+            barePicture(
+              background,
+              { width: context.size.w, height: context.size.h },
+              // Held to the slide's own shape, so the picture is the slide's size whatever
+              // the file's.
+              {
+                fit: 'cover',
+                widest: context.size.w / context.size.h,
+                tallest: context.size.w / context.size.h,
+              },
+              { name: 'fundo' },
+            ).draft,
+          ]),
       at(LOGO.x, LOGO.y, drawLogo(context.brand, LOGO.height, oneInk(ink('logo')))),
       card(context, ink, top, sheet),
       ...(paper === undefined
         ? []
         : [
+            // The kit's `barePicture` takes no blend mode (TYTO-910); until it does, the paper
+            // is the one image this template draws with the core's node.
             image({
               name: 'papel',
               asset: paper,
@@ -366,7 +448,7 @@ export const build: TemplateBuild = (context: TemplateContext) => {
 interface Sheet {
   readonly height: number;
   /** The arrow on the back tab. */
-  readonly arrow: string;
+  readonly arrow: Piece;
   /** Everything on the sheet, in y from the sheet's top. */
   readonly children: readonly NodeDraft[];
   /** The texts `settle` reads for an orphan, by field name. */
@@ -385,13 +467,11 @@ type Tunings = ReadonlyMap<string, Tuning>;
 type Ink = (name: ColorName) => string;
 
 function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): NodeDraft {
-  const tab = (name: string, d: string, color: string): NodeDraft =>
-    vector({
-      name,
-      geometry: { kind: 'path', d, fillRule: 'nonzero' },
-      size: { w: SLIDE.w, h: CARD.tabs + 35 },
-      fill: solid(color),
-    });
+  const drawn = (name: string, piece: Piece, color: string): NodeDraft =>
+    at(piece.x, piece.y, icon(piece.shape, piece.shape.box.h, color, name));
+  // The shadow is the whole card's, tabs and sheet as one outline, and no kit piece casts one
+  // from a group: `paddedCard` casts it from its own surface alone. Until the card is that
+  // piece, this group is the one the template makes with the core's node.
   return group({
     name: 'cartao',
     transform: { x: 0, y: top },
@@ -406,61 +486,68 @@ function card(context: TemplateContext, ink: Ink, top: number, sheet: Sheet): No
       },
     ],
     children: [
-      tab('aba-tras', BACK_TAB, ink('back-tab')),
-      vector({
-        name: 'seta',
-        geometry: { kind: 'path', d: sheet.arrow, fillRule: 'nonzero' },
-        size: { w: SLIDE.w, h: CARD.tabs },
-        fill: solid(ink('ink')),
-      }),
-      tab('aba-frente', FRONT_TAB, ink('card')),
-      plainText('assinatura', signatureOf(context.brand), {
-        family: 'Roboto',
-        font: SANS,
-        x: SIGNATURE.x,
-        capTop: SIGNATURE.capTop,
-        size: SIGNATURE.size,
-        weight: LIGHT,
-        color: ink('ink'),
-      }),
-      rect({
-        name: 'folha',
-        size: { w: CARD.w, h: sheet.height },
-        radius: CARD.radius,
-        fill: solid(ink('card')),
-        transform: { x: CARD.x, y: CARD.tabs },
-      }),
+      drawn('aba-tras', BACK_TAB, ink('back-tab')),
+      drawn('seta', sheet.arrow, ink('ink')),
+      drawn('aba-frente', FRONT_TAB, ink('card')),
+      signature(context, ink),
+      at(
+        CARD.x,
+        CARD.tabs,
+        shape(
+          { w: CARD.w, h: sheet.height },
+          solid(ink('card')),
+          { kind: 'rounded', radius: CARD.radius },
+          { name: 'folha' },
+        ),
+      ),
       group({ name: 'conteudo', transform: { y: CARD.tabs }, children: sheet.children }),
     ],
   });
+}
+
+/** The brand kit's signature on the front tab, its capitals at `SIGNATURE.capTop`. */
+function signature(context: TemplateContext, ink: Ink): NodeDraft {
+  const line = signatureLine(
+    signatureOf(context.brand),
+    { width: Infinity, height: Infinity },
+    { font: SANS, weight: LIGHT, color: ink('ink') },
+    { size: SIGNATURE.size, lineHeight: 1.2, align: 'left' },
+    { name: 'assinatura', metrics: METRICS.Roboto },
+  );
+  return at(SIGNATURE.x, SIGNATURE.capTop - anchorOf(line).capTop, line);
 }
 
 /* --------------------------------------------------------------------------- the stack -- */
 
 /**
  * One section of the sheet: drawn only when the brief writes it, and stacked under the one
- * before it. `gap` is the space above it, from the bottom of what is above (a text's last
- * capitals, a band's edge) to its own top (its first capitals, its edge). A section the brief
- * leaves out takes its gap with it, so the next one stands where the reference stands it.
+ * before it by the kit's `stackIn`, measured from the capitals. `gapAbove` runs from the foot of
+ * what is above (a text's last capitals, a band's edge) to its own top (its first capitals, its
+ * edge). A section the brief leaves out takes its gap with it, so the next one stands where the
+ * reference stands it. Its block is in the sheet's x.
  */
 interface Section {
-  readonly gap: number;
-  readonly height: number;
-  readonly draw: (top: number) => readonly NodeDraft[];
+  readonly item: Block;
+  readonly gapAbove: number;
   /** The section's text, for `settle` to read its lines: where it stands does not matter. */
   readonly text?: TextDraft;
 }
 
-/** The sections one under another, from `top`, and the y of the last one's bottom. */
-function stack(sections: readonly Section[], top: number): { nodes: NodeDraft[]; bottom: number } {
-  const nodes: NodeDraft[] = [];
-  let y = top;
-  for (const [index, section] of sections.entries()) {
-    if (index > 0) y += section.gap;
-    nodes.push(...section.draw(y));
-    y += section.height;
-  }
-  return { nodes, bottom: y };
+/** A block moved right by `dx` inside its own box, its anchor kept. */
+function across(dx: number, item: Block): Block {
+  return { ...item, draft: at(dx, 0, item) };
+}
+
+/**
+ * The sections one under another, the first one's top (its capitals, its edge) at `top` on the
+ * sheet, and the y of the last one's foot.
+ */
+function stacked(sections: readonly Section[], top: number): { node: NodeDraft; bottom: number } {
+  const column = stackIn({ width: CARD.w, height: Infinity }, sections, {
+    measureFrom: 'capitals',
+  });
+  const { capTop, baseline } = anchorOf(column);
+  return { node: at(CARD.x, top - capTop, column), bottom: top - capTop + baseline };
 }
 
 interface TextStyle {
@@ -486,17 +573,38 @@ function textSection(
   gap: number,
   tuning?: Tuning,
 ): Section {
-  const drawnRuns = tuning?.runs ?? runs;
-  const spacing = tuning === undefined ? {} : { spacing: tuning.letterSpacing };
-  const place = (capTop: number): TextDraft =>
-    richText(name, drawnRuns, { ...style, ...spacing, capTop });
-  const count = measuredLines(context, place(0), written, style.size, style.width);
-  const height =
-    (count - 1) * style.size * style.lineHeight + style.size * METRICS[style.family].cap;
-  return { gap, height, draw: (top) => [place(top)], text: place(0) };
+  const set = capText(
+    nonEmpty(tuning?.runs ?? runs, style.size),
+    { width: style.width, height: Infinity },
+    {
+      size: style.size,
+      lineHeight: style.lineHeight,
+      letterSpacing: tuning?.letterSpacing ?? (style.tracking ?? 0) * style.size,
+      align: style.align ?? 'left',
+    },
+    {
+      name,
+      metrics: METRICS[style.family],
+      measure: measuredOr(context, written, style.size, style.width),
+    },
+  );
+  return {
+    item: across(style.x - CARD.x, set),
+    gapAbove: gap,
+    ...(set.draft.kind === 'text' ? { text: set.draft } : {}),
+  };
 }
 
-/** A text inside a band: the band's padding around the text section's own height. */
+/** The runs, or one empty run when there are none, as a text node takes them. */
+function nonEmpty(runs: readonly TextRun[], size: number): [TextRun, ...TextRun[]] {
+  const [head, ...tail] = runs;
+  return [head ?? run('', { font: SANS, size, weight: REGULAR, color: '#000000' }), ...tail];
+}
+
+/**
+ * A text inside a band: the band's padding around the text's capitals. The band's block carries
+ * no anchor, so the stack measures its gaps from the band's edges, not from the text inside.
+ */
 function bandSection(
   ink: Ink,
   name: string,
@@ -505,11 +613,17 @@ function bandSection(
   edge: 'side' | 'top',
   gap: number,
 ): Section {
-  const height = padding.top + inner.height + padding.bottom;
+  const { capTop, baseline } = anchorOf(inner.item);
+  const height = padding.top + (baseline - capTop) + padding.bottom;
   return {
-    gap,
-    height,
-    draw: (top) => [...band(ink, name, top, height, edge), ...inner.draw(top + padding.top)],
+    item: block(
+      CARD.w,
+      height,
+      group({
+        children: [...band(ink, name, height, edge), at(0, padding.top - capTop, inner.item)],
+      }),
+    ),
+    gapAbove: gap,
   };
 }
 
@@ -525,11 +639,6 @@ function runsOfLines(
   ]);
 }
 
-/** A run in capitals, as the reference sets its title. */
-function upper(item: TextRun): TextRun {
-  return item.kind === 'text' ? { ...item, text: item.text.toUpperCase() } : item;
-}
-
 /* --------------------------------------------------------------------------- the title -- */
 
 /**
@@ -541,6 +650,7 @@ function titleSections(
   ink: Ink,
   written: readonly RichText[],
   align: 'left' | 'center',
+  highlighted?: Highlighted,
 ): Section[] {
   if (written.length === 0) return [];
   const x = align === 'left' ? INNER.textX : CARD.x;
@@ -565,14 +675,25 @@ function titleSections(
   const main = rest.length > 0 ? rest : [...written];
   const sections: Section[] = [];
   if (kicker.length > 0) {
-    const runs = runsOfLines(kicker, runStyle(TITLE.kickerSize)).map(upper);
+    // In capitals, as the reference sets its title.
+    const runs = runsOfLines(kicker, runStyle(TITLE.kickerSize), highlighted?.title.options).map(
+      inCapitals,
+    );
     sections.push(textSection(context, 'chapeu', runs, kicker, textStyle(TITLE.kickerSize), 0));
   }
-  const runs = runsOfLines(main, runStyle(TITLE.size)).map(upper);
+  const runs = runsOfLines(main, runStyle(TITLE.size), highlighted?.title.options).map(inCapitals);
   sections.push(
     textSection(context, 'titulo', runs, main, textStyle(TITLE.size), TITLE.kickerToTitle),
   );
   return sections;
+}
+
+/**
+ * A run in capitals, as the reference sets its title. Per run, after the highlights: the kit's
+ * `capitals` maps only a line's own words, so a `**…**` or `{cor:…}` word would stay as written.
+ */
+function inCapitals(item: TextRun): TextRun {
+  return item.kind === 'text' ? { ...item, text: item.text.toLocaleUpperCase('pt-BR') } : item;
 }
 
 /** The brief's `::titulo` lines, or the reference's two when the brief writes none. */
@@ -588,22 +709,22 @@ function withoutNumber(written: readonly RichText[]): RichText[] {
 }
 
 /** A band: the accent with its lighter edge on the left (`side`) or on top. */
-function band(
-  ink: Ink,
-  name: string,
-  y: number,
-  height: number,
-  edge: 'side' | 'top',
-): readonly NodeDraft[] {
+function band(ink: Ink, name: string, height: number, edge: 'side' | 'top'): readonly NodeDraft[] {
   const radius = 6;
   return [
-    rect({
-      name,
-      size: { w: INNER.bandW, h: height },
-      radius,
-      fill: solid(ink('accent-edge')),
-      transform: { x: INNER.bandX, y },
-    }),
+    at(
+      INNER.bandX - CARD.x,
+      0,
+      shape(
+        { w: INNER.bandW, h: height },
+        solid(ink('accent-edge')),
+        { kind: 'rounded', radius },
+        { name },
+      ),
+    ),
+    // The body rounds two corners only, which the kit's `shape` does not draw, and its `icon`
+    // from a path set the edges differently (measured, TYTO-894); until the kit draws it
+    // (TYTO-909), this is the one core `rect` the template draws.
     rect({
       name: `${name}-corpo`,
       size:
@@ -614,8 +735,8 @@ function band(
       fill: solid(ink('accent')),
       transform:
         edge === 'side'
-          ? { x: INNER.bandX + INNER.edge, y }
-          : { x: INNER.bandX, y: y + RULING.answerEdge },
+          ? { x: INNER.bandX - CARD.x + INNER.edge, y: 0 }
+          : { x: INNER.bandX - CARD.x, y: RULING.answerEdge },
     }),
   ];
 }
@@ -645,17 +766,8 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
   const questionSize = number('question-size');
   const answerSize = number('answer-size');
 
-  // The largest step at which the sheet fits, a pixel of the question at a time; the answer
-  // shrinks in proportion. At the floors the sheet is drawn as it is and the overflow reported.
-  const floorStep = Math.max(
-    0,
-    Math.ceil(
-      Math.max(
-        questionSize - number('question-floor'),
-        ((answerSize - number('answer-floor')) * questionSize) / answerSize,
-      ),
-    ),
-  );
+  // The fill search stays here, over the same builder as the shrink below: the kit's fitting
+  // pieces score no line's fill (TYTO-908).
   // The question fills the right of its box as far as it can (Rafael, 2026-11-12: "the right side
   // as full as possible, even with a smaller letter and fewer lines, but with a limit"). Every
   // size from `question-min` to `question-ceiling`, half a pixel apart, is laid out with its
@@ -709,51 +821,74 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
     }
   }
 
-  let sizes = { question: grown, answer: answerGrown };
-  let laid = layRuling(context, ink, parts, sizes, new Map());
-  for (
-    let step = 1;
-    laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize);
-    step += 1
-  ) {
-    const question = Math.max(number('question-floor'), grown - step);
-    const answer = Math.max(number('answer-floor'), answerGrown * Math.min(1, question / grown));
-    sizes = { question, answer };
-    laid = layRuling(context, ink, parts, sizes, new Map());
-  }
-
-  // No text ends on a word of its own (Tyto ADR 0167), as voce-conhece's paragraphs: each by a
-  // word moved down or its letter spacing, at the size it was fitted at, as long as the card
-  // still fits; a word nothing within the limits clears is reported.
-  const fitsAtSize = laid.height <= limit;
-  const tracking = number('orphan-tracking');
-  let tunings: Tunings = new Map();
-  for (const [name, size] of [
-    ['pergunta', sizes.question],
-    ['resposta', sizes.answer],
-    ['fonte', RULING.sourceSize],
-  ] as const) {
-    if (laid.texts?.get(name) === undefined) continue;
-    const settled = settle({
-      size,
+  // Past the room the question shrinks a pixel at a time from its grown size down to its floor,
+  // the answer with it in proportion, and then no text ends on a word of its own (Tyto ADR
+  // 0167), as voce-conhece's paragraphs: the question, then the answer and the source at that
+  // size, each by a word moved down or its letter spacing, never its size. The kit's
+  // `fittedColumn` does both over the same builder: the sheet is one piece as tall as the card's
+  // room. The kit's spacing reads a room too small as a gap of 0, never less, so the room runs
+  // a pixel past the card's and the gap under the sheet must be at least that pixel: it fits
+  // exactly when the sheet is no taller than the room. When even the floors do not fit, the
+  // sheet is drawn at the floors and the overflow reported, here, by how far the sheet runs
+  // past the room: the kit would report the gap's shortfall, 1 px. Both go when the kit fits
+  // and reports by the room itself (TYTO-916).
+  const answerFloor = number('answer-floor');
+  const sizesAt = (question: number) => ({
+    question,
+    answer: Math.max(answerFloor, answerGrown * Math.min(1, question / grown)),
+  });
+  const extraNames = ['resposta', 'fonte'] as const;
+  const tuningsOf = (tuning: ColumnTuning): Tunings => {
+    const tunings = new Map<string, Tuning>();
+    const add = (name: string, letterSpacing: number, runs: readonly TextRun[] | undefined) =>
+      tunings.set(name, { letterSpacing, ...(runs === undefined ? {} : { runs }) });
+    add('pergunta', tuning.letterSpacing, tuning.runs);
+    const present = extraNames.filter((name) => parts[partOf[name]] !== undefined);
+    for (const [index, name] of present.entries()) {
+      add(name, tuning.extras[index] ?? 0, tuning.extraRuns?.[index]);
+    }
+    return tunings;
+  };
+  const sheetAt = (tuning: ColumnTuning): Sheet =>
+    layRuling(context, ink, parts, sizesAt(tuning.size), tuningsOf(tuning));
+  const fitted = fittedColumn(
+    (tuning): ColumnStack => {
+      const sheet = sheetAt(tuning);
+      const sizes = sizesAt(tuning.size);
+      const question = sheet.texts?.get('pergunta');
+      const extras = [
+        { text: sheet.texts?.get('resposta'), size: sizes.answer },
+        { text: sheet.texts?.get('fonte'), size: RULING.sourceSize },
+      ].flatMap(({ text, size }) => (text === undefined ? [] : [{ text, size }]));
+      return {
+        pieces: [{ height: sheet.height, place: () => [...sheet.children] }],
+        weights: [0, 1],
+        ...(question === undefined ? {} : { text: question }),
+        extras,
+      };
+    },
+    { width: CARD.w, top: 0, bottom: limit + 1 },
+    {
+      ceiling: grown,
+      floor: number('question-floor'),
+      step: 1,
+      floorLast: 'always',
+      gapFloor: 1,
+      orphanShrink: 0,
+      orphanTracking: number('orphan-tracking'),
+    },
+    {
       measure: context.measure,
-      limits: { shrink: 0, tracking },
-      layout: (setting) => {
-        const tried = new Map(tunings);
-        tried.set(name, {
-          letterSpacing: setting.letterSpacing,
-          ...(setting.runs === undefined ? {} : { runs: setting.runs }),
-        });
-        const sheet = layRuling(context, ink, parts, sizes, tried);
-        const text = sheet.texts?.get(name) ?? laid.texts!.get(name)!;
-        return { text, fits: !fitsAtSize || sheet.height <= limit, laid: tried as Tunings };
+      report: (diagnostic) => {
+        if (diagnostic.code !== 'W_TEMPLATE_OVERFLOW') context.report(diagnostic);
       },
-    });
-    tunings = settled.laid;
-    reportOrphan(context.report, settled.orphan);
-  }
-  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
+    },
+  );
+  return sheetAt(fitted.tuning);
 }
+
+/** Which part of a ruling each text the column settles is. */
+const partOf = { resposta: 'answer', fonte: 'source' } as const;
 
 function present(written: readonly RichText[] | undefined): written is readonly RichText[] {
   return written !== undefined && written.length > 0;
@@ -769,7 +904,10 @@ function layRuling(
   const questionSize = sizes.question;
   const answerSize = sizes.answer;
   const texts = new Map<string, TextDraft>();
-  const sections: Section[] = [...titleSections(context, ink, titleLines(context), 'left')];
+  const highlighted = highlightsOf(ink);
+  const sections: Section[] = [
+    ...titleSections(context, ink, titleLines(context), 'left', highlighted),
+  ];
 
   if (present(parts.subject)) {
     const runs = runsOfLines(parts.subject, {
@@ -799,8 +937,8 @@ function layRuling(
     const runs = runsOfLines(
       parts.question,
       { font: QUESTION_FACE, size: questionSize, weight: REGULAR, color: ink('ink') },
-      { bold: MEDIUM },
-    ).map((item) => italic(item, ink('highlight-color')));
+      highlighted.question.options,
+    ).map(italic);
     const section = textSection(
       context,
       'pergunta',
@@ -824,7 +962,7 @@ function layRuling(
     const runs = runsOfLines(
       parts.answer,
       { font: SANS, size: answerSize, weight: LIGHT, color: ink('on-accent') },
-      { bold: MEDIUM },
+      highlighted.answer.options,
     );
     const inner = textSection(
       context,
@@ -873,16 +1011,55 @@ function layRuling(
     sections.push(section);
   }
 
-  const { nodes, bottom } = stack(sections, RULING.top);
-  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: nodes, texts };
+  const { node, bottom } = stacked(sections, RULING.top);
+  return { height: Math.round(bottom + RULING.bottom), arrow: ARROW_ON, children: [node], texts };
 }
 
-/** The question is italic throughout; its highlights take the highlight colour. */
-function italic(item: TextRun, highlight: string): TextRun {
-  if (item.kind !== 'text') return item;
-  const bold = item.weight > REGULAR;
-  return { ...item, style: 'italic', ...(bold ? { color: solid(highlight) } : {}) };
+/** The question is italic throughout, its highlights too. */
+function italic(item: TextRun): TextRun {
+  return item.kind === 'text' ? { ...item, style: 'italic' } : item;
 }
+
+/** The mark family a brief paints a span with: `{cor:destaque}…{/}`. */
+const COLOR_MARK = 'cor';
+
+/**
+ * The highlight's colour: `destaque` when a configuration sets it; otherwise the old
+ * `highlight-color` when one sets that; otherwise the default. Both declare the same default, so
+ * a value written equal to it draws the same either way.
+ */
+function highlightColor(ink: Ink): string {
+  const named = ink('destaque');
+  if (named !== COLOR_DEFAULTS.destaque) return named;
+  const old = ink('highlight-color');
+  return old !== COLOR_DEFAULTS['highlight-color'] ? old : named;
+}
+
+/**
+ * The brief's highlights, by the kit (TYTO-554), as data. In the question `**…**` is Medium in the
+ * highlight's colour, and so is a `{cor:destaque}` span; in the title both take the colour and keep
+ * the title's weight. On the answer's band `**…**` stays Medium in the band's words and a
+ * `{cor:…}` span passes through uncoloured: the band is the highlight's colour, so the span would
+ * vanish (as on concursos-abertos's back-cover box, TYTO-893), and making it Medium would change
+ * what a colour mark means. The back cover, the subject and the source take no highlight.
+ */
+function highlightsOf(ink: Ink) {
+  const color = highlightColor(ink);
+  const painted = { destaque: { color } };
+  return {
+    question: highlights({
+      bold: { weight: MEDIUM, color },
+      marks: { [COLOR_MARK]: { like: 'bold', values: painted } },
+    }),
+    title: highlights({
+      bold: { weight: EXTRABOLD, color },
+      marks: { [COLOR_MARK]: { like: 'plain', values: painted } },
+    }),
+    answer: highlights({ bold: { weight: MEDIUM } }),
+  };
+}
+
+type Highlighted = ReturnType<typeof highlightsOf>;
 
 /* ---------------------------------------------------------------------- the back cover -- */
 
@@ -945,40 +1122,36 @@ function backCover(context: TemplateContext, ink: Ink): Sheet {
     );
   }
 
-  sections.push({ gap: BACK.heartGap, height: BACK.heart.d, draw: (top) => heart(ink, top) });
-  sections.push({ gap: BACK.iconsGap, height: BACK.iconsHeight, draw: (top) => icons(ink, top) });
+  sections.push({ item: heart(ink), gapAbove: BACK.heartGap });
+  sections.push({ item: icons(ink), gapAbove: BACK.iconsGap });
 
-  const { nodes, bottom } = stack(sections, BACK.top);
-  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: nodes };
+  const { node, bottom } = stacked(sections, BACK.top);
+  return { height: Math.round(bottom + BACK.bottom), arrow: ARROW_DOWN, children: [node] };
 }
 
-function heart(ink: Ink, y: number): readonly NodeDraft[] {
+function heart(ink: Ink): Block {
   const { x, d } = BACK.heart;
-  const shape =
-    'M96 150C96 150 42 112 42 78C42 58 57 46 73 46C84 46 92 52 96 60C100 52 108 46 119 46' +
-    'C135 46 150 58 150 78C150 112 96 150 96 150Z';
-  return [
-    rect({
-      name: 'coracao-fundo',
-      size: { w: d, h: d },
-      radius: d / 2,
-      fill: solid(ink('accent')),
-      transform: { x, y },
-    }),
-    vector({
-      name: 'coracao',
-      geometry: { kind: 'path', d: shape, fillRule: 'nonzero' },
-      size: { w: d, h: d },
-      fill: solid(ink('card')),
-      transform: { x, y },
-    }),
-  ];
+  return block(
+    CARD.w,
+    d,
+    at(
+      x - CARD.x,
+      0,
+      iconInDisc(
+        HEART,
+        d,
+        { disc: ink('accent'), icon: ink('card') },
+        { iconRatio: 1 },
+        { name: 'coracao-disco', discName: 'coracao-fundo', iconName: 'coracao' },
+      ),
+    ),
+  );
 }
 
 /** Comment, share and save, outlined in the ink. */
-function icons(ink: Ink, y: number): readonly NodeDraft[] {
+function icons(ink: Ink): Block {
   const { x } = BACK.icons;
-  const stroke = { paint: solid(ink('ink')), width: 4, align: 'center' as const };
+  const outlined = { kind: 'stroke', width: 4 } as const;
   // Three buttons of the kit's `buttonRow`, each an icon alone (TYTO-884). The reference sets
   // them 66 and 130 px apart from the first and the two smaller ones 4 px down; a block as wide
   // as the step to the next icon, less the gap, and as tall as the row, holds each icon at its
@@ -993,21 +1166,11 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
     down: number,
   ) => {
     const box = typeof size === 'number' ? { w: size, h: size } : size;
+    const outline: Icon = { box, d, paint: outlined };
     return {
       name: `${name}-botao`,
       style: { height: ROW, radius: 0, padding: { left: 0, right: 0 }, gap: 0 },
-      leading: block(
-        width,
-        ROW,
-        vector({
-          name,
-          geometry: { kind: 'path', d, fillRule: 'nonzero' },
-          size: box,
-          stroke,
-          fill: NO_FILL,
-          transform: { x: 0, y: down },
-        }),
-      ),
+      leading: block(width, ROW, at(0, down, icon(outline, box.h, ink('ink'), name))),
     };
   };
   const row = buttonRow(
@@ -1025,7 +1188,7 @@ function icons(ink: Ink, y: number): readonly NodeDraft[] {
     ],
     { gap: GAP, name: 'icones' },
   );
-  return [at(x, y, row)];
+  return block(CARD.w, BACK.iconsHeight, at(x - CARD.x, 0, row));
 }
 
 /* -------------------------------------------------------------------------- the shared -- */
@@ -1077,74 +1240,31 @@ function richLine(words: string): RichText {
   return [{ kind: 'text', value: words, range: { start: 0, end: words.length } }];
 }
 
-interface Box {
-  readonly family: Family;
-  readonly x: number;
-  /** Where the capitals start, in the parent's pixels. */
-  readonly capTop: number;
-  readonly size: number;
-  readonly lineHeight?: number;
-  readonly width?: number;
-  readonly align?: 'left' | 'center';
-  /** Letter spacing in em. */
-  readonly tracking?: number;
-  /** Letter spacing in px, as `settle` hands it; wins over `tracking`. */
-  readonly spacing?: number;
-}
-
-interface Placed extends Box {
-  readonly font: typeof SERIF | typeof SANS;
-  readonly weight: number;
-  readonly color: string;
-}
-
-/** A plain text, one run per line, placed by the top of its capitals. */
-function plainText(name: string, words: string, placed: Placed): TextDraft {
-  const style = {
-    font: placed.font,
-    size: placed.size,
-    weight: placed.weight,
-    color: placed.color,
-  };
-  const [first = '', ...others] = words.split('\n');
-  return richText(
-    name,
-    [run(first, style), ...others.flatMap((line) => [lineBreak(), run(line, style)])],
-    placed,
-  );
-}
-
-function richText(name: string, runs: readonly TextRun[], placed: Box): TextDraft {
-  const lineHeight = placed.lineHeight ?? 1.2;
-  const [head, ...tail] = runs;
-  const empty = run('', { font: SANS, size: placed.size, weight: REGULAR, color: '#000000' });
-  return text({
-    name,
-    runs: [head ?? empty, ...tail],
-    ...(placed.width === undefined ? {} : { box: { w: placed.width } }),
-    align: placed.align ?? 'left',
-    letterSpacing: placed.spacing ?? (placed.tracking ?? 0) * placed.size,
-    lineHeight,
-    transform: {
-      x: placed.x,
-      y: placed.capTop - capOffset(placed.family, placed.size, lineHeight),
-    },
-  });
-}
-
 /**
- * How many lines a text wraps to: measured when the context can, estimated otherwise from the
- * characters a line of `width` holds, each line written counted apart.
+ * `context.measure`, with its lines never fewer than one; when nothing can measure (a test, CI
+ * without the face), the estimate's lines, so the estimate is only worked out without a face.
  */
-function measuredLines(
+function measuredOr(
   context: TemplateContext,
-  node: TextDraft,
   written: readonly RichText[],
   size: number,
   width: number,
-): number {
-  const measured = context.measure(node);
-  if (measured !== undefined) return Math.max(1, measured.lines);
+): TemplateContext['measure'] {
+  return (node) => {
+    const measured = context.measure(node);
+    if (measured !== undefined) return { ...measured, lines: Math.max(1, measured.lines) };
+    const lines = estimated(written, size, width);
+    return { runs: node.runs, lines, width, height: 0, scale: 1, overflow: 0 };
+  };
+}
+
+/**
+ * How many lines a text wraps to with nothing to measure it by: the characters a line of
+ * `width` holds, each line written counted apart. The kit's `capText` counts only the lines the
+ * runs break into themselves when nothing measures; until it takes an estimate (TYTO-905), this
+ * one stays here.
+ */
+function estimated(written: readonly RichText[], size: number, width: number): number {
   const perLine = Math.max(1, Math.floor(width / (size * ESTIMATED_ADVANCE)));
   const count = written.reduce<number>(
     (sum, line) => sum + Math.max(1, Math.ceil([...plain(line)].length / perLine)),

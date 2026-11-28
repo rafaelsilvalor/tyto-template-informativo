@@ -166,3 +166,58 @@ describe('the answer', () => {
     expect(found.runs.find((run) => run.kind === 'text')?.size).toBe(31.5);
   });
 });
+
+describe('the last line', () => {
+  // The sizes held, so the fill search does not move a word away from the line's end: at 0.5 em
+  // a character, seven four-letter words fill the question's line (34 of 38 characters), ten the
+  // answer's (49 of 49) and thirteen the source's (64 of 65), so one word more is left alone.
+  const HELD: SuppliedValues = {
+    'question-min': { value: 40 },
+    'question-ceiling': { value: 40 },
+    'answer-min': { value: 32 },
+    'answer-ceiling': { value: 32 },
+    ...MOVE_ONLY,
+  };
+  const WORDS = 'casa mesa lado vida obra fase rede tema voto nota sala pena meta base'.split(' ');
+  const wordsOf = (count: number) => WORDS.slice(0, count).join(' ');
+
+  async function laid(body: string, name: string) {
+    const result = await compileTemplate({
+      brief: `---\ntemplate: informativo\nformats: [grid]\n---\n::lamina\n${body}`,
+      template,
+      formats,
+      faces,
+      values: HELD,
+    });
+    if (!result.ok) throw new Error(result.error.map((item) => item.message).join('\n'));
+    const frame = result.value.scene.artworks[0]?.frames[0];
+    if (frame === undefined) throw new Error('no frame');
+    const found = nodes(frame).find((node) => node.name === name);
+    if (found?.kind !== 'text') throw new Error(`no ${name}`);
+    const orphans = result.diagnostics.filter((item) => item.code === 'W_TEMPLATE_ORPHAN');
+    return { lines: laidLines(found), orphans };
+  }
+
+  it('of the question takes a word from the line above rather than stand alone', async () => {
+    const { lines, orphans } = await laid(`::pergunta\n  ${wordsOf(8)}?\n`, 'pergunta');
+    expect(lines.map((line) => line.length)).toEqual([6, 2]);
+    expect(orphans).toEqual([]);
+  });
+
+  it('of the answer does the same, inside its band', async () => {
+    const body = `::pergunta\n  Pode?\n::resposta\n  ${wordsOf(11)}.\n`;
+    const { lines, orphans } = await laid(body, 'resposta');
+    expect(lines.map((line) => line.length)).toEqual([9, 2]);
+    expect(orphans).toEqual([]);
+  });
+
+  it('of the source does the same, with or without an answer above it', async () => {
+    const alone = await laid(`::pergunta\n  Pode?\n::fonte\n  ${wordsOf(14)}.\n`, 'fonte');
+    const under = await laid(
+      `::pergunta\n  Pode?\n::resposta\n  Sim.\n::fonte\n  ${wordsOf(14)}.\n`,
+      'fonte',
+    );
+    expect(alone.lines.map((line) => line.length)).toEqual([12, 2]);
+    expect(under.lines.map((line) => line.length)).toEqual([12, 2]);
+  });
+});
