@@ -7901,8 +7901,8 @@ var error20 = () => {
       case "invalid_union":
         return "\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF";
       case "invalid_element": {
-        const place = withDefinite(issue2.origin ?? "array");
-        return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF \u05D1${place}`;
+        const place2 = withDefinite(issue2.origin ?? "array");
+        return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF \u05D1${place2}`;
       }
       default:
         return `\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF`;
@@ -22433,7 +22433,7 @@ function frame(options) {
   };
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-3KKHXN6D.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-3KKHXN6D.js
 var PAPER = "#fbfbfb";
 var INK = "#000000";
 var ZEBRA = "#f2f2f4";
@@ -22470,7 +22470,18 @@ var BODY = {
 };
 var OPTICAL_DROP = 0.15;
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.27.1/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-template-kit@0.28.0/node_modules/@rafaelsilvalor/tyto-template-kit/dist/index.js
+function columnOrder(entries, order) {
+  if (order === void 0) return [...entries];
+  const byName = new Map(entries.map((entry) => [entry.name, entry]));
+  const written = [];
+  for (const { name } of order) {
+    const entry = byName.get(name);
+    if (entry !== void 0 && !written.includes(entry)) written.push(entry);
+  }
+  const queue = [...written];
+  return entries.map((entry) => written.includes(entry) ? queue.shift() : entry);
+}
 function parameterValues(schema, given = {}) {
   const values = {};
   for (const [name, declared] of Object.entries(schema)) {
@@ -22523,6 +22534,7 @@ function shifted(draft, dx, dy) {
 function offsetFor(align, room, size) {
   switch (align) {
     case "start":
+    case "stretch":
       return 0;
     case "center":
       return (room - size) / 2;
@@ -22530,14 +22542,435 @@ function offsetFor(align, room, size) {
       return room - size;
   }
 }
+function groupOf(children, name) {
+  return group({ children, ...name === void 0 ? {} : { name } });
+}
+function overrun(size, room) {
+  return Number.isFinite(room) ? Math.max(0, size - room) : 0;
+}
+var SIZE_MODES = ["auto", "hug", "fill", "fixed"];
+var AREA_PARAMETERS = {
+  flow: {
+    kind: "choice",
+    default: "column",
+    choices: ["column", "row"],
+    description: "The direction the children follow: down a column or along a row."
+  },
+  gap: {
+    kind: "length",
+    default: 0,
+    description: "Space between neighbours, in px; a child may state its own gap above it."
+  },
+  measureFrom: {
+    kind: "choice",
+    default: "box",
+    choices: ["box", "capitals"],
+    description: "Where a gap in a column runs from: one box's foot to the next one's top, or one block's last baseline to the next one's first capitals (ADR 0230 decision 2). A row reads boxes."
+  },
+  justify: {
+    kind: "choice",
+    default: "start",
+    choices: ["start", "center", "end", "space-between"],
+    description: "Where the children sit along the flow when the area is larger than they are."
+  },
+  align: {
+    kind: "choice",
+    default: "start",
+    choices: ["start", "center", "end", "stretch"],
+    description: "Where a child sits across the flow; stretch gives a child with no size of its own the area's whole width (in a column) or height (in a row)."
+  },
+  paddingTop: { kind: "length", default: 0, description: "Room inside the area, above, in px." },
+  paddingRight: { kind: "length", default: 0, description: "Room inside, on the right, in px." },
+  paddingBottom: { kind: "length", default: 0, description: "Room inside, below, in px." },
+  paddingLeft: { kind: "length", default: 0, description: "Room inside, on the left, in px." },
+  widthMode: {
+    kind: "choice",
+    default: "auto",
+    choices: SIZE_MODES,
+    description: "How wide the area is: by its content (hug), the room it is offered (fill), `width` (fixed), or auto: hug, or fill when its parent stretches it."
+  },
+  width: { kind: "length", default: 0, min: 0, description: "The width when fixed, in px." },
+  widthWeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0,
+    description: "The area's share of the room left in a row, against its neighbours that fill."
+  },
+  heightMode: {
+    kind: "choice",
+    default: "auto",
+    choices: SIZE_MODES,
+    description: "How tall the area is, as `widthMode` says it for the width."
+  },
+  height: { kind: "length", default: 0, min: 0, description: "The height when fixed, in px." },
+  heightWeight: {
+    kind: "ratio",
+    default: 1,
+    min: 0,
+    description: "The area's share of the room left in a column, against its neighbours."
+  },
+  minWidth: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The narrowest it gets; 0 is none."
+  },
+  maxWidth: {
+    kind: "length",
+    default: Infinity,
+    min: 0,
+    description: "The widest it gets, in px."
+  },
+  minHeight: {
+    kind: "length",
+    default: 0,
+    min: 0,
+    description: "The shortest it gets; 0 is none."
+  },
+  maxHeight: {
+    kind: "length",
+    default: Infinity,
+    min: 0,
+    description: "The tallest it gets, in px."
+  },
+  collapse: {
+    kind: "choice",
+    default: "when-empty",
+    choices: ["when-empty", "never"],
+    description: "Whether an area with no child in its flow takes no room and no gap in its parent."
+  }
+};
+function sizeValues(size) {
+  if (size === void 0) return {};
+  if (typeof size === "number") return { mode: "fixed", length: size };
+  if (typeof size === "string") return { mode: size };
+  return { mode: "fill", weight: size.fill };
+}
+function paddingValues(padding) {
+  if (padding === void 0) return {};
+  const [top, right, bottom, left] = typeof padding === "number" ? [padding, padding, padding, padding] : padding;
+  return { paddingTop: top, paddingRight: right, paddingBottom: bottom, paddingLeft: left };
+}
+function area(options) {
+  const { name, width, height, padding, order, children, ...scalars } = options;
+  const across2 = sizeValues(width);
+  const down = sizeValues(height);
+  const given = {
+    ...scalars,
+    ...paddingValues(padding),
+    ...across2.mode === void 0 ? {} : { widthMode: across2.mode },
+    ...across2.length === void 0 ? {} : { width: across2.length },
+    ...across2.weight === void 0 ? {} : { widthWeight: across2.weight },
+    ...down.mode === void 0 ? {} : { heightMode: down.mode },
+    ...down.length === void 0 ? {} : { height: down.length },
+    ...down.weight === void 0 ? {} : { heightWeight: down.weight }
+  };
+  return {
+    kind: "area",
+    ...name === void 0 ? {} : { name },
+    parameters: parameterValues(AREA_PARAMETERS, given),
+    ...order === void 0 ? {} : { order },
+    children
+  };
+}
+var HUG = { mode: "hug" };
+function isArea(item) {
+  return typeof item !== "function" && "kind" in item && item.kind === "area";
+}
+function entryOf(child, index) {
+  if (child === void 0 || child === null || child === false) return [];
+  const slotted = typeof child !== "function" && "item" in child;
+  const item = slotted ? child.item : child;
+  if (item === void 0 || item === null || item === false) return [];
+  const slot = slotted ? child : {};
+  const own2 = isArea(item) ? item.name : void 0;
+  return [{ item, slot, name: slot.name ?? own2 ?? `\0child ${index}` }];
+}
+function ownSize(parameters, axis) {
+  const mode = axis === "width" ? parameters.widthMode : parameters.heightMode;
+  switch (mode) {
+    case "fixed":
+      return axis === "width" ? parameters.width : parameters.height;
+    case "fill":
+      return { fill: axis === "width" ? parameters.widthWeight : parameters.heightWeight };
+    default:
+      return mode;
+  }
+}
+function bounded(size, min, max) {
+  if (size > max) return max;
+  if (min > 0 && size < min) return min;
+  return size;
+}
+function definite(resolved, room) {
+  if (resolved.mode === "fixed") return resolved.size;
+  if (resolved.mode === "fill" && Number.isFinite(room)) return room;
+  return void 0;
+}
+function roomFor(resolved, bound, share) {
+  if (resolved.mode === "fixed") return resolved.size;
+  if (resolved.mode === "fill") return share ?? bound;
+  return bound;
+}
+function build(item, room, width, height) {
+  if (typeof item === "function") return item(room) ?? void 0;
+  if (isArea(item)) return layOut(item, room, width, height);
+  return item;
+}
+function place(sizes, anchors, gaps, gap, capitals2) {
+  const offsets = [];
+  let at2 = 0;
+  for (let index = 0; index < sizes.length; index += 1) {
+    if (index > 0) {
+      at2 = capitals2 ? offsets[index - 1] + anchors[index - 1].baseline + gaps[index] - anchors[index].capTop : at2 + (sizes[index - 1] + gaps[index]);
+    }
+    offsets.push(at2);
+  }
+  const last = sizes[sizes.length - 1];
+  const content = last === void 0 ? 0 : capitals2 ? at2 + last : at2 + (last + gap) - gap;
+  return { offsets, content };
+}
+function shares(free, fills) {
+  const result = fills.map(() => void 0);
+  let left = free;
+  for (; ; ) {
+    const open2 = fills.map((_, index) => index).filter((index) => result[index] === void 0);
+    if (open2.length === 0) break;
+    const total = open2.reduce((sum, index) => sum + fills[index].weight, 0);
+    const raw = (index) => total > 0 ? Math.max(0, left * fills[index].weight / total) : 0;
+    const held = open2.filter((index) => {
+      const fill = fills[index];
+      return bounded(raw(index), fill.min, fill.max) !== raw(index);
+    });
+    if (held.length === 0) {
+      for (const index of open2) result[index] = raw(index);
+      break;
+    }
+    for (const index of held) {
+      const fill = fills[index];
+      result[index] = bounded(raw(index), fill.min, fill.max);
+      left -= result[index];
+    }
+  }
+  return result.map((share) => share ?? 0);
+}
+var FRACTIONS = {
+  "top-left": [0, 0],
+  top: [0.5, 0],
+  "top-right": [1, 0],
+  left: [0, 0.5],
+  center: [0.5, 0.5],
+  right: [1, 0.5],
+  "bottom-left": [0, 1],
+  bottom: [0.5, 1],
+  "bottom-right": [1, 1]
+};
+function layOut(description, room, resolvedWidth, resolvedHeight) {
+  const parameters = description.parameters;
+  const column = parameters.flow === "column";
+  const capitals2 = column && parameters.measureFrom === "capitals";
+  const [mainStart, mainEnd, crossStart, crossEnd] = column ? [
+    parameters.paddingTop,
+    parameters.paddingBottom,
+    parameters.paddingLeft,
+    parameters.paddingRight
+  ] : [
+    parameters.paddingLeft,
+    parameters.paddingRight,
+    parameters.paddingTop,
+    parameters.paddingBottom
+  ];
+  const mainAxis = column ? "height" : "width";
+  const crossAxis = column ? "width" : "height";
+  const mainOf = (item) => item[mainAxis];
+  const crossOf = (item) => item[crossAxis];
+  const mainRoom = room[mainAxis];
+  const crossRoom = room[crossAxis];
+  const ownMainDefinite = definite(column ? resolvedHeight : resolvedWidth, mainRoom);
+  const ownCrossDefinite = definite(column ? resolvedWidth : resolvedHeight, crossRoom);
+  const innerMain = ownMainDefinite === void 0 ? Infinity : ownMainDefinite - mainStart - mainEnd;
+  const crossBound = (ownCrossDefinite ?? crossRoom) - crossStart - crossEnd;
+  const [ownMin, ownMax] = column ? [parameters.minHeight, parameters.maxHeight] : [parameters.minWidth, parameters.maxWidth];
+  const [ownCrossMin, ownCrossMax] = column ? [parameters.minWidth, parameters.maxWidth] : [parameters.minHeight, parameters.maxHeight];
+  const entries = description.children.flatMap(entryOf);
+  const flowing = columnOrder(
+    entries.filter((entry) => entry.slot.float === void 0),
+    description.order
+  );
+  const floating = entries.filter((entry) => entry.slot.float !== void 0);
+  const resolve = (entry, axis, isMain) => {
+    const written = entry.slot[axis] ?? (isArea(entry.item) ? ownSize(entry.item.parameters, axis) : "auto");
+    const size = written === "auto" ? !isMain && parameters.align === "stretch" ? "fill" : "hug" : written;
+    if (typeof size === "number") return { mode: "fixed", size };
+    if (size === "hug") return HUG;
+    const weight = size === "fill" ? 1 : size.fill;
+    if (isMain ? innerMain === Infinity : !Number.isFinite(crossBound)) return HUG;
+    return { mode: "fill", weight };
+  };
+  const boundsOf = (entry) => {
+    const item = entry.item;
+    const own2 = isArea(item) ? column ? [item.parameters.minHeight, item.parameters.maxHeight] : [item.parameters.minWidth, item.parameters.maxWidth] : [0, Infinity];
+    return [entry.slot.min ?? own2[0], entry.slot.max ?? own2[1]];
+  };
+  const children = flowing.map((entry) => {
+    const [min, max] = boundsOf(entry);
+    return {
+      entry,
+      main: resolve(entry, mainAxis, true),
+      cross: resolve(entry, crossAxis, false),
+      min,
+      max
+    };
+  });
+  const roomOf = (child, main) => {
+    const across2 = roomFor(child.cross, crossBound);
+    return column ? { width: across2, height: main } : { width: main, height: across2 };
+  };
+  const resolvedOf = (child, main) => column ? [child.cross, main] : [main, child.cross];
+  for (const child of children) {
+    if (child.main.mode === "fill") continue;
+    const mainRoomOf = child.main.mode === "fixed" ? child.main.size : Infinity;
+    child.block = build(
+      child.entry.item,
+      roomOf(child, mainRoomOf),
+      ...resolvedOf(child, child.main)
+    );
+    if (child.block === void 0) {
+      child.absent = true;
+      continue;
+    }
+    if (child.main.mode === "fixed") {
+      child.size = child.main.size;
+      continue;
+    }
+    const measured = mainOf(child.block);
+    child.size = bounded(measured, child.min, child.max);
+    const item = child.entry.item;
+    if (child.size !== measured && (typeof item === "function" || isArea(item))) {
+      const fixed = { mode: "fixed", size: child.size };
+      child.block = build(item, roomOf(child, child.size), ...resolvedOf(child, fixed));
+    }
+  }
+  const gapsOf = (present22) => present22.map(
+    (child, index) => index === 0 ? 0 : child.entry.slot.gapAbove ?? parameters.gap
+  );
+  for (; ; ) {
+    const present22 = children.filter((child) => child.absent !== true);
+    const filling = present22.filter((child) => child.main.mode === "fill");
+    if (filling.length === 0) break;
+    const empty = place(
+      present22.map((child) => child.main.mode === "fill" ? 0 : child.size),
+      present22.map(
+        (child) => child.main.mode === "fill" || child.block === void 0 ? { capTop: 0, baseline: 0 } : boxAnchor(child.block, mainOf)
+      ),
+      gapsOf(present22),
+      parameters.gap,
+      capitals2
+    );
+    const split = shares(
+      innerMain - empty.content,
+      filling.map((child) => ({
+        weight: child.main.mode === "fill" ? child.main.weight : 0,
+        min: child.min,
+        max: child.max
+      }))
+    );
+    let dropped = false;
+    for (const [index, child] of filling.entries()) {
+      const share = split[index];
+      const fixed = { mode: "fixed", size: share };
+      child.block = build(child.entry.item, roomOf(child, share), ...resolvedOf(child, fixed));
+      child.size = share;
+      if (child.block === void 0) {
+        child.absent = true;
+        dropped = true;
+      }
+    }
+    if (!dropped) break;
+  }
+  const present2 = children.filter((child) => child.absent !== true);
+  if (present2.length === 0 && parameters.collapse === "when-empty") return void 0;
+  const blocks = present2.map((child) => child.block);
+  const sizes = present2.map((child) => child.size);
+  const placed = place(
+    sizes,
+    blocks.map((item) => boxAnchor(item, mainOf)),
+    gapsOf(present2),
+    parameters.gap,
+    capitals2
+  );
+  const contentOuter = placed.content + mainStart + mainEnd;
+  const ownMain = bounded(ownMainDefinite ?? contentOuter, ownMin, ownMax);
+  const offsets = justified(
+    placed.offsets,
+    parameters.justify,
+    ownMainDefinite === void 0 ? 0 : Math.max(0, innerMain - placed.content)
+  );
+  const widest = blocks.reduce((most, item) => Math.max(most, crossOf(item)), 0);
+  const ownCross = bounded(
+    ownCrossDefinite ?? widest + crossStart + crossEnd,
+    ownCrossMin,
+    ownCrossMax
+  );
+  const innerCross = ownCrossDefinite !== void 0 || ownCross !== widest + crossStart + crossEnd ? ownCross - crossStart - crossEnd : widest;
+  const drafts = [];
+  const tops = [];
+  for (const [index, item] of blocks.entries()) {
+    const along = mainStart + offsets[index];
+    const across2 = crossStart + offsetFor(parameters.align, innerCross, crossOf(item));
+    const [dx, dy] = column ? [across2, along] : [along, across2];
+    drafts.push(shifted(item.draft, dx, dy));
+    tops.push(dy);
+  }
+  const [width, height] = column ? [ownCross, ownMain] : [ownMain, ownCross];
+  for (const entry of floating) {
+    const item = build(entry.item, { width, height }, HUG, HUG);
+    if (item === void 0) continue;
+    const float = entry.slot.float;
+    const [across2, down] = FRACTIONS[float.anchor];
+    const dx = (across2 === 0 ? 0 : across2 * (width - item.width)) + (float.x ?? 0);
+    const dy = (down === 0 ? 0 : down * (height - item.height)) + (float.y ?? 0);
+    drafts.push(shifted(item.draft, dx, dy));
+  }
+  const limit = ownMainDefinite === void 0 ? mainRoom : ownMain;
+  return {
+    width,
+    height,
+    draft: groupOf(drafts, description.name),
+    ...anchorAcross(blocks, tops),
+    overflow: Math.max(overrun(contentOuter, limit), overrun(ownMain, mainRoom))
+  };
+}
+function boxAnchor(item, mainOf) {
+  return item.anchor ?? { capTop: 0, baseline: mainOf(item) };
+}
+function justified(offsets, justify, free) {
+  if (justify === "start" || free === 0) return offsets;
+  if (justify === "center") return offsets.map((offset) => offset + free / 2);
+  if (justify === "end") return offsets.map((offset) => offset + free);
+  if (offsets.length < 2) return offsets;
+  const step = free / (offsets.length - 1);
+  return offsets.map((offset, index) => offset + step * index);
+}
+function areaIn(room, description) {
+  const resolvedOf = (axis) => {
+    const size = ownSize(description.parameters, axis);
+    if (typeof size === "number") return { mode: "fixed", size };
+    if (size === "auto" || size === "hug") return HUG;
+    return { mode: "fill", weight: size === "fill" ? 1 : size.fill };
+  };
+  return layOut(description, room, resolvedOf("width"), resolvedOf("height")) ?? {
+    width: 0,
+    height: 0,
+    draft: groupOf([], description.name),
+    overflow: 0
+  };
+}
 function block(width, height, draft) {
   return { width, height, draft };
 }
 function sized(draft) {
   return { width: draft.size.w, height: draft.size.h, draft };
-}
-function overrun(size, room) {
-  return Number.isFinite(room) ? Math.max(0, size - room) : 0;
 }
 var STACK_PARAMETERS = {
   gap: {
@@ -22558,42 +22991,22 @@ var STACK_PARAMETERS = {
     description: "Where a gap runs from: one box's foot to the next one's top, or one block's last baseline to the next one's first capitals (ADR 0230 decision 2)."
   }
 };
-function stackItemOf(entry) {
-  return "item" in entry ? { block: entry.item, gap: entry.gapAbove } : { block: entry };
-}
-function stackIn(area, items, given = {}, options = {}) {
+function stackIn(room, items, given = {}, options = {}) {
   const values = parameterValues(STACK_PARAMETERS, given);
-  const entries = items.map(stackItemOf);
-  const blocks = entries.map((entry) => entry.block);
-  const widest = blocks.reduce((most, item) => Math.max(most, item.width), 0);
-  const width = Number.isFinite(area.width) ? area.width : widest;
-  let y = 0;
-  const children = [];
-  const tops = [];
-  for (const [index, entry] of entries.entries()) {
-    const above = blocks[index - 1];
-    if (above !== void 0) {
-      const gap = entry.gap ?? values.gap;
-      y = values.measureFrom === "capitals" ? tops[index - 1] + anchorOf(above).baseline + gap - anchorOf(entry.block).capTop : y + (above.height + gap);
-    }
-    children.push(shifted(entry.block.draft, offsetFor(values.align, width, entry.block.width), y));
-    tops.push(y);
-  }
-  const last = blocks[blocks.length - 1];
-  const height = last === void 0 ? 0 : values.measureFrom === "capitals" ? y + last.height : y + (last.height + values.gap) - values.gap;
-  return {
-    width,
-    height,
-    draft: groupOf(children, options.name),
-    ...anchorAcross(blocks, tops),
-    overflow: overrun(height, area.height)
-  };
+  return areaIn(
+    room,
+    area({
+      ...options,
+      flow: "column",
+      ...values,
+      width: "fill",
+      collapse: "never",
+      children: items
+    })
+  );
 }
 function at(x, y, item) {
   return shifted(item.draft, x, y);
-}
-function groupOf(children, name) {
-  return group({ children, ...name === void 0 ? {} : { name } });
 }
 var DEFAULT_METRICS = { ascent: 0.75, descent: 0.25, capHeight: 0.709 };
 function capOffset(size, lineHeight, metrics = DEFAULT_METRICS) {
@@ -22620,10 +23033,10 @@ var CAP_TEXT_PARAMETERS = {
     description: "Where each line sits across the block."
   }
 };
-function capText(runs, area, given = {}, options = {}) {
+function capText(runs, area2, given = {}, options = {}) {
   const values = parameterValues(CAP_TEXT_PARAMETERS, given);
   const metrics = options.metrics ?? DEFAULT_METRICS;
-  const box = Number.isFinite(area.width) ? { box: { w: area.width } } : {};
+  const box = Number.isFinite(area2.width) ? { box: { w: area2.width } } : {};
   const node2 = text({
     ...options.text,
     ...options.name === void 0 ? {} : { name: options.name },
@@ -22637,7 +23050,7 @@ function capText(runs, area, given = {}, options = {}) {
   const pitch = values.size * values.lineHeight;
   const capTop = capOffset(values.size, values.lineHeight, metrics);
   return {
-    ...block(Number.isFinite(area.width) ? area.width : 0, lines2 * pitch, node2),
+    ...block(Number.isFinite(area2.width) ? area2.width : 0, lines2 * pitch, node2),
     anchor: { capTop, baseline: capTop + (lines2 - 1) * pitch + values.size * metrics.capHeight }
   };
 }
@@ -22863,9 +23276,9 @@ var MARK_PARAMETERS = {
     description: "The mark's height, in px; absent, the area's height when it has one."
   }
 };
-function markIn(shape2, area, fill, given = {}, options = {}) {
+function markIn(shape2, area2, fill, given = {}, options = {}) {
   const values = parameterValues(MARK_PARAMETERS, given);
-  const height = given.height !== void 0 || !Number.isFinite(area.height) ? values.height : area.height;
+  const height = given.height !== void 0 || !Number.isFinite(area2.height) ? values.height : area2.height;
   const scale = height / shape2.box.h;
   const width = shape2.box.w * scale;
   return {
@@ -22880,7 +23293,7 @@ function markIn(shape2, area, fill, given = {}, options = {}) {
         transform: { scaleX: scale, scaleY: scale }
       })
     ),
-    overflow: Number.isFinite(area.width) ? Math.max(0, width - area.width) : 0
+    overflow: Number.isFinite(area2.width) ? Math.max(0, width - area2.width) : 0
   };
 }
 var TEXT_PARAMETERS = {
@@ -23344,9 +23757,9 @@ function pictureSize(asset, width, cap, values) {
   const fit = values.fit === "auto" ? clamped === natural ? "cover" : "contain" : values.fit;
   return { size: { w: width, h: Math.round(clamped) }, fit };
 }
-function barePicture(asset, area, given = {}, options = {}) {
+function barePicture(asset, area2, given = {}, options = {}) {
   const values = parameterValues(BARE_PICTURE_PARAMETERS, given);
-  const { size, fit } = pictureSize(asset, area.width, area.height, values);
+  const { size, fit } = pictureSize(asset, area2.width, area2.height, values);
   return sized(image({ name: options.name ?? "image", asset, size, fit }));
 }
 var FRAMED_PICTURE_PARAMETERS = {
@@ -23403,9 +23816,9 @@ var SIGNATURE_LINE_PARAMETERS = {
     description: "Where the line sits across its area."
   }
 };
-function signatureLine(words, area, style2, given = {}, options = {}) {
+function signatureLine(words, area2, style2, given = {}, options = {}) {
   const values = parameterValues(SIGNATURE_LINE_PARAMETERS, given);
-  return capText(plainRuns(words, { ...style2, size: values.size }), area, values, {
+  return capText(plainRuns(words, { ...style2, size: values.size }), area2, values, {
     name: options.name ?? "signature",
     ...options.metrics === void 0 ? {} : { metrics: options.metrics },
     ...options.text === void 0 ? {} : { text: options.text }
@@ -23443,17 +23856,17 @@ var BUTTON_ROW_PARAMETERS = {
     description: "With room to spare: centred at `gap` apart, or spread so the first and last touch its edges."
   }
 };
-function buttonRowIn(area, buttons, given = {}, options = {}) {
+function buttonRowIn(area2, buttons, given = {}, options = {}) {
   const values = parameterValues(BUTTON_ROW_PARAMETERS, given);
   const widths = buttons.map(buttonWidth);
   const natural = widths.reduce((sum, each) => sum + each, 0) + values.gap * Math.max(0, buttons.length - 1);
-  const room = Number.isFinite(area.width) ? area.width : natural;
+  const room = Number.isFinite(area2.width) ? area2.width : natural;
   const overflow = natural - room > 0 ? natural - room : 0;
   const spare = Math.max(0, room - natural);
-  const justified = values.arrange === "justified" && buttons.length > 1;
-  const gap = justified ? values.gap + spare / (buttons.length - 1) : values.gap;
+  const justified2 = values.arrange === "justified" && buttons.length > 1;
+  const gap = justified2 ? values.gap + spare / (buttons.length - 1) : values.gap;
   const height = buttons.reduce((tallest, each) => Math.max(tallest, each.style.height), 0);
-  let x = justified ? 0 : spare / 2;
+  let x = justified2 ? 0 : spare / 2;
   const children = buttons.map((button, index) => {
     const drawn = drawButton(button, widths[index]);
     const placed = at(x, (height - drawn.height) / 2, drawn);
@@ -23526,9 +23939,9 @@ var ICON_PARAMETERS = {
     description: "The icon's height, in px; absent, the area's height when it has one."
   }
 };
-function iconIn(shape2, area, color2, given = {}, options = {}) {
+function iconIn(shape2, area2, color2, given = {}, options = {}) {
   const values = parameterValues(ICON_PARAMETERS, given);
-  const height = given.height !== void 0 || !Number.isFinite(area.height) ? values.height : area.height;
+  const height = given.height !== void 0 || !Number.isFinite(area2.height) ? values.height : area2.height;
   const name = options.name ?? "icon";
   const scale = height / shape2.box.h;
   const paint = shape2.paint.kind === "fill" ? { fill: solid(color2) } : {
@@ -23552,7 +23965,7 @@ function iconIn(shape2, area, color2, given = {}, options = {}) {
         transform: { scaleX: scale, scaleY: scale }
       })
     ),
-    overflow: Number.isFinite(area.width) ? Math.max(0, width - area.width) : 0
+    overflow: Number.isFinite(area2.width) ? Math.max(0, width - area2.width) : 0
   };
 }
 var ICON_IN_DISC_PARAMETERS = {
@@ -23585,7 +23998,7 @@ function iconInDisc(shape2, diameter, colors, given = {}, options = {}) {
   );
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-KTMH3XT2.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/chunk-KTMH3XT2.js
 var PLACEHOLDER_LOGO = {
   box: { w: 186.09, h: 376.79 },
   d: (
@@ -23625,7 +24038,7 @@ function signatureOf(kit) {
   return kit.signature ?? PLACEHOLDER_SIGNATURE;
 }
 
-// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.4/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
+// node_modules/.pnpm/@rafaelsilvalor+tyto-house-style@0.9.5/node_modules/@rafaelsilvalor/tyto-house-style/dist/index.js
 var TITLE_INK = "#7c7c7c";
 var ROW_INK = "#393939";
 var FACE = systemFont("CircularXX");
@@ -23865,7 +24278,7 @@ var ROLES = {
   roles: ["contracapa"],
   default: "ruling"
 };
-var build = (context) => {
+var build2 = (context) => {
   const ink = (name) => colorValue(context, name, COLOR_DEFAULTS[name]);
   const number4 = (name) => numberValue(context, name, NUMBER_DEFAULTS[name]);
   const written = context.slots["fundo"]?.value;
@@ -24452,9 +24865,9 @@ function unfilledOf(context, node2) {
     const [head, ...tail] = line;
     return context.measure({ ...node2, box: {}, runs: [head, ...tail] })?.width ?? box;
   };
-  const shares = lines2.map((line) => Math.max(0, box - widthOf(line)) / box);
-  if (shares.length === 1) return shares[0] * shares[0] / 4;
-  const body = shares.slice(0, -1);
+  const shares2 = lines2.map((line) => Math.max(0, box - widthOf(line)) / box);
+  if (shares2.length === 1) return shares2[0] * shares2[0] / 4;
+  const body = shares2.slice(0, -1);
   return body.reduce((sum, share) => sum + share * share, 0) / body.length;
 }
 function fieldOf(context, name) {
@@ -24483,17 +24896,17 @@ function estimated(written, size, width) {
 }
 
 // src/index.ts
-var BUILDS = { informativo: build };
+var BUILDS = { informativo: build2 };
 function activate(host) {
   host.registerTemplatePack({
     id: "informativo",
     templates: [],
     directory: "templates",
     build: (template, context) => {
-      const build2 = BUILDS[template];
-      if (build2 === void 0)
+      const build3 = BUILDS[template];
+      if (build3 === void 0)
         throw new Error(`informativo draws no template named '${template}'.`);
-      return build2(context);
+      return build3(context);
     }
   });
 }

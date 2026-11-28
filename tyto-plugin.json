@@ -1,7 +1,7 @@
 {
   "name": "informativo",
   "version": "0.6.0",
-  "engine": ">=0.14",
+  "engine": ">=0.32",
   "contributes": ["template-pack"],
   "permissions": ["font:CircularXX", "font:Newsreader", "font:Roboto"]
 }
