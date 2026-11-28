@@ -22951,6 +22951,49 @@ var FIT_TEXT_PARAMETERS = {
     description: "Where each line sits across the area."
   }
 };
+function fitSizes(given = {}) {
+  const values = parameterValues(FIT_TEXT_PARAMETERS, given);
+  const floor = values.floor;
+  const ceiling = Math.max(floor, values.ceiling);
+  const start = values.start === "whole" ? Math.floor(ceiling) : ceiling;
+  if (values.step === 0) return start === floor ? [floor] : [start, floor];
+  const sizes = [];
+  if (values.floorLast === "always") {
+    for (let size = start; size > floor; size -= values.step) sizes.push(size);
+    sizes.push(floor);
+  } else {
+    for (let size = start; size >= floor; size -= values.step) sizes.push(size);
+  }
+  return sizes;
+}
+function weightedSpacing(spacing) {
+  const { top, bottom, heights, weights } = spacing;
+  if (weights.length !== heights.length + 1) {
+    return { ok: false, error: { expected: heights.length + 1, got: weights.length } };
+  }
+  const used = heights.reduce((sum, height) => sum + height, 0);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const free = bottom - top - used;
+  const unit = free > 0 && totalWeight > 0 ? free / totalWeight : 0;
+  const tops = [];
+  let cursor = top;
+  heights.forEach((height, index) => {
+    cursor += (weights[index] ?? 0) * unit;
+    tops.push(cursor);
+    cursor += height;
+  });
+  return { ok: true, value: { tops, unit, overflow: Math.max(0, -free) }, diagnostics: [] };
+}
+function spaceByWeight(spacing) {
+  const spaced = weightedSpacing(spacing);
+  if (!spaced.ok) {
+    const { heights, weights } = spacing;
+    throw new RangeError(
+      `spaceByWeight takes ${String(heights.length + 1)} weights for ${String(heights.length)} blocks, got ${String(weights.length)}`
+    );
+  }
+  return spaced.value;
+}
 var ORPHAN_LIMITS = { shrink: 0.08, tracking: 0.01 };
 var SIZE_STEP = 1;
 var TRACKING_STEPS = 4;
@@ -23128,6 +23171,85 @@ var FITTED_COLUMN_PARAMETERS = {
     description: "The most letter spacing, in em, a text may take or give for the same."
   }
 };
+function fittedColumn(stackAt, room, given = {}, options = {}) {
+  const values = parameterValues(FITTED_COLUMN_PARAMETERS, given);
+  const measure = options.measure ?? (() => void 0);
+  const report = options.report ?? (() => void 0);
+  const limits = { shrink: values.orphanShrink, tracking: values.orphanTracking };
+  const arrange = (tuning2) => {
+    const stacked2 = stackAt(tuning2);
+    const heights = stacked2.pieces.map((piece) => piece.height);
+    const spaced = spaceByWeight({
+      top: room.top,
+      bottom: room.bottom,
+      heights,
+      weights: stacked2.weights
+    });
+    return { stacked: stacked2, spaced, fits: spaced.unit >= values.gapFloor };
+  };
+  const plainAt = (size) => ({ size, letterSpacing: 0, extras: [] });
+  const drawn = (tuning2, stacked2, tops) => ({
+    ...block(
+      room.width,
+      room.bottom,
+      group({
+        ...options.name === void 0 ? {} : { name: options.name },
+        children: stacked2.pieces.flatMap((piece, index) => piece.place(tops[index] ?? room.top))
+      })
+    ),
+    tuning: tuning2
+  });
+  const fitted = fitSizes(values).find((size) => arrange(plainAt(size)).fits);
+  if (fitted === void 0) {
+    const tuning2 = plainAt(values.floor);
+    const arranged2 = arrange(tuning2);
+    const weight = arranged2.stacked.weights.reduce((sum, each) => sum + each, 0);
+    report({
+      code: "W_TEMPLATE_OVERFLOW",
+      overflow: (values.gapFloor - arranged2.spaced.unit) * weight
+    });
+    return drawn(tuning2, arranged2.stacked, arranged2.spaced.tops);
+  }
+  let tuning = plainAt(fitted);
+  const orphans = [];
+  const main = arrange(tuning).stacked.text;
+  if (main !== void 0) {
+    const settled = settle2({
+      size: fitted,
+      measure,
+      limits,
+      layout: (setting) => {
+        const tried = { ...setting, extras: [] };
+        const arranged2 = arrange(tried);
+        return { text: arranged2.stacked.text ?? main, fits: arranged2.fits, laid: tried };
+      }
+    });
+    tuning = settled.laid;
+    if (settled.orphan !== void 0) orphans.push(settled.orphan);
+  }
+  for (const [index, extra] of arrange(tuning).stacked.extras.entries()) {
+    const settled = settle2({
+      size: extra.size,
+      measure,
+      limits: { shrink: 0, tracking: limits.tracking },
+      layout: (setting) => {
+        const spacing = [...tuning.extras];
+        spacing[index] = setting.letterSpacing;
+        const rebroken = [...tuning.extraRuns ?? []];
+        rebroken[index] = setting.runs;
+        const tried = { ...tuning, extras: spacing, extraRuns: rebroken };
+        const arranged2 = arrange(tried);
+        const read = arranged2.stacked.extras[index]?.text ?? extra.text;
+        return { text: read, fits: arranged2.fits, laid: tried };
+      }
+    });
+    tuning = settled.laid;
+    if (settled.orphan !== void 0) orphans.push(settled.orphan);
+  }
+  for (const word of orphans) reportOrphan(report, word);
+  const arranged = arrange(tuning);
+  return drawn(tuning, arranged.stacked, arranged.spaced.tops);
+}
 var PICTURE_SHAPE_PARAMETERS = {
   widest: {
     kind: "ratio",
@@ -23903,15 +24025,6 @@ function ruling(context, ink, number4) {
   const limit = number4("card-max-height") - CARD.tabs;
   const questionSize = number4("question-size");
   const answerSize = number4("answer-size");
-  const floorStep = Math.max(
-    0,
-    Math.ceil(
-      Math.max(
-        questionSize - number4("question-floor"),
-        (answerSize - number4("answer-floor")) * questionSize / answerSize
-      )
-    )
-  );
   const smallest = Math.min(questionSize, number4("question-min"));
   const largest = Math.max(questionSize, number4("question-ceiling"));
   const candidates = [];
@@ -23954,43 +24067,59 @@ function ruling(context, ink, number4) {
       answerGrown = size;
     }
   }
-  let sizes = { question: grown, answer: answerGrown };
-  let laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  for (let step = 1; laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize); step += 1) {
-    const question = Math.max(number4("question-floor"), grown - step);
-    const answer = Math.max(number4("answer-floor"), answerGrown * Math.min(1, question / grown));
-    sizes = { question, answer };
-    laid = layRuling(context, ink, parts, sizes, /* @__PURE__ */ new Map());
-  }
-  const fitsAtSize = laid.height <= limit;
-  const tracking = number4("orphan-tracking");
-  let tunings = /* @__PURE__ */ new Map();
-  for (const [name, size] of [
-    ["pergunta", sizes.question],
-    ["resposta", sizes.answer],
-    ["fonte", RULING.sourceSize]
-  ]) {
-    if (laid.texts?.get(name) === void 0) continue;
-    const settled = settle2({
-      size,
+  const answerFloor = number4("answer-floor");
+  const sizesAt = (question) => ({
+    question,
+    answer: Math.max(answerFloor, answerGrown * Math.min(1, question / grown))
+  });
+  const extraNames = ["resposta", "fonte"];
+  const tuningsOf = (tuning) => {
+    const tunings = /* @__PURE__ */ new Map();
+    const add = (name, letterSpacing, runs) => tunings.set(name, { letterSpacing, ...runs === void 0 ? {} : { runs } });
+    add("pergunta", tuning.letterSpacing, tuning.runs);
+    const present2 = extraNames.filter((name) => parts[partOf[name]] !== void 0);
+    for (const [index, name] of present2.entries()) {
+      add(name, tuning.extras[index] ?? 0, tuning.extraRuns?.[index]);
+    }
+    return tunings;
+  };
+  const sheetAt = (tuning) => layRuling(context, ink, parts, sizesAt(tuning.size), tuningsOf(tuning));
+  const fitted = fittedColumn(
+    (tuning) => {
+      const sheet = sheetAt(tuning);
+      const sizes = sizesAt(tuning.size);
+      const question = sheet.texts?.get("pergunta");
+      const extras = [
+        { text: sheet.texts?.get("resposta"), size: sizes.answer },
+        { text: sheet.texts?.get("fonte"), size: RULING.sourceSize }
+      ].flatMap(({ text: text2, size }) => text2 === void 0 ? [] : [{ text: text2, size }]);
+      return {
+        pieces: [{ height: sheet.height, place: () => [...sheet.children] }],
+        weights: [0, 1],
+        ...question === void 0 ? {} : { text: question },
+        extras
+      };
+    },
+    { width: CARD.w, top: 0, bottom: limit + 1 },
+    {
+      ceiling: grown,
+      floor: number4("question-floor"),
+      step: 1,
+      floorLast: "always",
+      gapFloor: 1,
+      orphanShrink: 0,
+      orphanTracking: number4("orphan-tracking")
+    },
+    {
       measure: context.measure,
-      limits: { shrink: 0, tracking },
-      layout: (setting) => {
-        const tried = new Map(tunings);
-        tried.set(name, {
-          letterSpacing: setting.letterSpacing,
-          ...setting.runs === void 0 ? {} : { runs: setting.runs }
-        });
-        const sheet = layRuling(context, ink, parts, sizes, tried);
-        const text2 = sheet.texts?.get(name) ?? laid.texts.get(name);
-        return { text: text2, fits: !fitsAtSize || sheet.height <= limit, laid: tried };
+      report: (diagnostic2) => {
+        if (diagnostic2.code !== "W_TEMPLATE_OVERFLOW") context.report(diagnostic2);
       }
-    });
-    tunings = settled.laid;
-    reportOrphan(context.report, settled.orphan);
-  }
-  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
+    }
+  );
+  return sheetAt(fitted.tuning);
 }
+var partOf = { resposta: "answer", fonte: "source" };
 function present(written) {
   return written !== void 0 && written.length > 0;
 }

@@ -62,20 +62,26 @@ import {
   buttonRow,
   capText,
   capitals,
+  fittedColumn,
   icon,
   iconInDisc,
   keepTogether,
   lines,
   plain,
-  reportOrphan,
   reportOverflow,
-  settle,
   shape,
   signatureLine,
   stackIn,
 } from '@tyto/template-kit';
 
-import type { Block, FontMetrics, Icon, KeepTogetherRule } from '@tyto/template-kit';
+import type {
+  Block,
+  ColumnStack,
+  ColumnTuning,
+  FontMetrics,
+  Icon,
+  KeepTogetherRule,
+} from '@tyto/template-kit';
 
 import type { RichText, TemplateBuild, TemplateContext, TextRun } from '@tyto/core';
 import type { NodeDraft, TextDraft } from '@tyto/core/template';
@@ -745,17 +751,8 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
   const questionSize = number('question-size');
   const answerSize = number('answer-size');
 
-  // The largest step at which the sheet fits, a pixel of the question at a time; the answer
-  // shrinks in proportion. At the floors the sheet is drawn as it is and the overflow reported.
-  const floorStep = Math.max(
-    0,
-    Math.ceil(
-      Math.max(
-        questionSize - number('question-floor'),
-        ((answerSize - number('answer-floor')) * questionSize) / answerSize,
-      ),
-    ),
-  );
+  // The fill search stays here, over the same builder as the shrink below: the kit's fitting
+  // pieces score no line's fill (TYTO-908).
   // The question fills the right of its box as far as it can (Rafael, 2026-11-12: "the right side
   // as full as possible, even with a smaller letter and fewer lines, but with a limit"). Every
   // size from `question-min` to `question-ceiling`, half a pixel apart, is laid out with its
@@ -809,51 +806,73 @@ function ruling(context: TemplateContext, ink: Ink, number: (name: NumberName) =
     }
   }
 
-  let sizes = { question: grown, answer: answerGrown };
-  let laid = layRuling(context, ink, parts, sizes, new Map());
-  for (
-    let step = 1;
-    laid.height > limit && step <= floorStep + Math.max(0, grown - questionSize);
-    step += 1
-  ) {
-    const question = Math.max(number('question-floor'), grown - step);
-    const answer = Math.max(number('answer-floor'), answerGrown * Math.min(1, question / grown));
-    sizes = { question, answer };
-    laid = layRuling(context, ink, parts, sizes, new Map());
-  }
-
-  // No text ends on a word of its own (Tyto ADR 0167), as voce-conhece's paragraphs: each by a
-  // word moved down or its letter spacing, at the size it was fitted at, as long as the card
-  // still fits; a word nothing within the limits clears is reported.
-  const fitsAtSize = laid.height <= limit;
-  const tracking = number('orphan-tracking');
-  let tunings: Tunings = new Map();
-  for (const [name, size] of [
-    ['pergunta', sizes.question],
-    ['resposta', sizes.answer],
-    ['fonte', RULING.sourceSize],
-  ] as const) {
-    if (laid.texts?.get(name) === undefined) continue;
-    const settled = settle({
-      size,
+  // Past the room the question shrinks a pixel at a time from its grown size down to its floor,
+  // the answer with it in proportion, and then no text ends on a word of its own (Tyto ADR
+  // 0167), as voce-conhece's paragraphs: the question, then the answer and the source at that
+  // size, each by a word moved down or its letter spacing, never its size. The kit's
+  // `fittedColumn` does both over the same builder: the sheet is one piece as tall as the card's
+  // room. The kit's spacing reads a room too small as a gap of 0, never less, so the room runs
+  // a pixel past the card's and the gap under the sheet must be at least that pixel: it fits
+  // exactly when the sheet is no taller than the room. When even the floors do not fit, the
+  // sheet is drawn at the floors and the overflow reported, here, by how far the sheet runs
+  // past the room: the kit would report the gap's shortfall, 1 px.
+  const answerFloor = number('answer-floor');
+  const sizesAt = (question: number) => ({
+    question,
+    answer: Math.max(answerFloor, answerGrown * Math.min(1, question / grown)),
+  });
+  const extraNames = ['resposta', 'fonte'] as const;
+  const tuningsOf = (tuning: ColumnTuning): Tunings => {
+    const tunings = new Map<string, Tuning>();
+    const add = (name: string, letterSpacing: number, runs: readonly TextRun[] | undefined) =>
+      tunings.set(name, { letterSpacing, ...(runs === undefined ? {} : { runs }) });
+    add('pergunta', tuning.letterSpacing, tuning.runs);
+    const present = extraNames.filter((name) => parts[partOf[name]] !== undefined);
+    for (const [index, name] of present.entries()) {
+      add(name, tuning.extras[index] ?? 0, tuning.extraRuns?.[index]);
+    }
+    return tunings;
+  };
+  const sheetAt = (tuning: ColumnTuning): Sheet =>
+    layRuling(context, ink, parts, sizesAt(tuning.size), tuningsOf(tuning));
+  const fitted = fittedColumn(
+    (tuning): ColumnStack => {
+      const sheet = sheetAt(tuning);
+      const sizes = sizesAt(tuning.size);
+      const question = sheet.texts?.get('pergunta');
+      const extras = [
+        { text: sheet.texts?.get('resposta'), size: sizes.answer },
+        { text: sheet.texts?.get('fonte'), size: RULING.sourceSize },
+      ].flatMap(({ text, size }) => (text === undefined ? [] : [{ text, size }]));
+      return {
+        pieces: [{ height: sheet.height, place: () => [...sheet.children] }],
+        weights: [0, 1],
+        ...(question === undefined ? {} : { text: question }),
+        extras,
+      };
+    },
+    { width: CARD.w, top: 0, bottom: limit + 1 },
+    {
+      ceiling: grown,
+      floor: number('question-floor'),
+      step: 1,
+      floorLast: 'always',
+      gapFloor: 1,
+      orphanShrink: 0,
+      orphanTracking: number('orphan-tracking'),
+    },
+    {
       measure: context.measure,
-      limits: { shrink: 0, tracking },
-      layout: (setting) => {
-        const tried = new Map(tunings);
-        tried.set(name, {
-          letterSpacing: setting.letterSpacing,
-          ...(setting.runs === undefined ? {} : { runs: setting.runs }),
-        });
-        const sheet = layRuling(context, ink, parts, sizes, tried);
-        const text = sheet.texts?.get(name) ?? laid.texts!.get(name)!;
-        return { text, fits: !fitsAtSize || sheet.height <= limit, laid: tried as Tunings };
+      report: (diagnostic) => {
+        if (diagnostic.code !== 'W_TEMPLATE_OVERFLOW') context.report(diagnostic);
       },
-    });
-    tunings = settled.laid;
-    reportOrphan(context.report, settled.orphan);
-  }
-  return tunings.size === 0 ? laid : layRuling(context, ink, parts, sizes, tunings);
+    },
+  );
+  return sheetAt(fitted.tuning);
 }
+
+/** Which part of a ruling each text the column settles is. */
+const partOf = { resposta: 'answer', fonte: 'source' } as const;
 
 function present(written: readonly RichText[] | undefined): written is readonly RichText[] {
   return written !== undefined && written.length > 0;
